@@ -1,0 +1,1488 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>🎒 邁向5A10+ 國中會考讀書會 ✨</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Varela+Round&family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        html, body {
+            height: 100%; 
+            height: -webkit-fill-available;
+            height: 100dvh;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: 'Varela Round', 'Noto Sans TC', sans-serif;
+            background-color: #fdfbfb;
+            background-image: 
+                radial-gradient(#ffcdd2 2px, transparent 2px),
+                radial-gradient(#b2ebf2 2px, transparent 2px);
+            background-size: 40px 40px;
+            background-position: 0 0, 20px 20px;
+            -webkit-tap-highlight-color: transparent;
+            color: #4a4a4a;
+        }
+        
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            border: 3px solid #ffe4e6;
+            box-shadow: 0 8px 32px rgba(255, 192, 203, 0.2);
+        }
+
+        .custom-scrollbar::-webkit-scrollbar { height: 8px; width: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(253, 164, 175, 0.6); border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(253, 164, 175, 1); }
+
+        .animate-bounce-slow { animation: bounce 3s infinite; }
+        @keyframes bounce { 0%, 100% { transform: translateY(-5%); } 50% { transform: translateY(0); } }
+
+        @keyframes marqueeVertical {
+            0% { transform: translateY(100%); }
+            100% { transform: translateY(-100%); }
+        }
+        .marquee-container {
+            overflow: hidden;
+            position: relative;
+            -webkit-mask-image: linear-gradient(to bottom, transparent, black 5%, black 95%, transparent);
+            mask-image: linear-gradient(to bottom, transparent, black 5%, black 95%, transparent);
+        }
+        .marquee-content {
+            position: absolute;
+            width: 100%;
+            animation: marqueeVertical 15s linear infinite;
+        }
+        .marquee-container:hover .marquee-content, 
+        .marquee-container:active .marquee-content {
+            animation-play-state: paused;
+        }
+        
+        .chat-bubble-me { background: #e0f2fe; border-radius: 1rem 1rem 0 1rem; }
+        .chat-bubble-other { background: #fce7f3; border-radius: 1rem 1rem 1rem 0; }
+        
+        .text-white .step3-color-unit,
+        .text-white .step3-color-book,
+        .text-white .step3-color-desc {
+            color: #ffffff !important;
+        }
+        .step3-color-unit { color: #DC143C; }
+        .step3-color-book { color: #0066FF; }
+        .step3-color-desc { color: #696969; }
+        
+        .step3-color-exam {
+            color: #FF0000 !important;
+            text-shadow: 0 0 5px #FFFF00, 0 0 10px #FFFF00, 0 0 15px #FFFF00 !important;
+        }
+    </style>
+
+    <script type="application/json" id="app-data">
+    {
+      "EXAM_DATE": "2027-05-22T00:00:00",
+      "LEVELS": ["Level 1", "Level 2", "Level 3", "Level 4", "Level 5", "Level 6"]
+    }
+    </script>
+</head>
+<body class="w-full flex flex-col overflow-hidden">
+
+    <div id="app" class="w-full h-full flex flex-col overflow-hidden"></div>
+    <div id="modals-container"></div> 
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, setDoc, getDoc, onSnapshot, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // ==========================================
+        //  系統設定與常數
+        // ==========================================
+        const BASE_FIREBASE_CONFIG = {
+            authDomain: "chinese-learning-47f4d.firebaseapp.com",
+            projectId: "chinese-learning-47f4d",
+            storageBucket: "chinese-learning-47f4d.firebasestorage.app",
+            messagingSenderId: "76289812052",
+            appId: "1:76289812052:web:898384a916f9f341f62fc1"
+        };
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'study-group-app';
+        
+        const appDataRaw = document.getElementById('app-data').textContent;
+        const appData = JSON.parse(appDataRaw);
+        
+        const EXAM_DATE = new Date(appData.EXAM_DATE);
+        const LEVELS = appData.LEVELS;
+
+        const USER_COLORS = [
+            'bg-[#FF0000] text-white', 'bg-[#FF0088] text-white', 'bg-[#FF5511] text-white',
+            'bg-[#FF8800] text-white', 'bg-[#FFFF00] text-gray-800', 'bg-[#BBFF00] text-gray-800',
+            'bg-[#00FF00] text-gray-800', 'bg-[#00FFFF] text-gray-800', 'bg-[#00BBFF] text-white',
+            'bg-[#0000FF] text-white', 'bg-[#7700FF] text-white', 'bg-[#FF00FF] text-white',
+            'bg-[#CC00FF] text-white', 'bg-[#009FCC] text-white', 'bg-[#FF88C2] text-gray-800',
+            'bg-[#990099] text-white', 'bg-[#007799] text-white', 'bg-[#E38EFF] text-gray-800',
+            'bg-[#FFB7DD] text-gray-800', 'bg-[#99FFFF] text-gray-800'
+        ];
+        
+        const getUserColor = (name) => {
+            if(!name) return USER_COLORS[0];
+            if(usersProfile[name] && usersProfile[name].color) return usersProfile[name].color;
+            let hash = 0;
+            for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+            return USER_COLORS[Math.abs(hash) % USER_COLORS.length];
+        };
+
+        // 資料狀態
+        let appInstance, auth, db;
+        let currentUser = null;
+        let username = '';
+        let viewingUser = 'ALL'; 
+        let isAdmin = false;
+        
+        let globalUsers = [];
+        let importantDates = [];
+        let chatMessages = [];
+        let usersProfile = {}; 
+        
+        // 英文單字相關資料庫快取
+        let allVocab = {}; 
+        let allProgress = {}; 
+        let allActivities = {}; 
+        let allFavorites = {}; 
+        
+        let modalState = { date: '', level: '' };
+        let currentYear = new Date().getFullYear();
+        let currentMonth = new Date().getMonth(); 
+        
+        let currentLearningBatch = [];
+        let currentWordIndex = 0;
+
+        let unsubUsers, unsubDates, unsubChat, unsubProfile, unsubVocab, unsubProgress, unsubActivity, unsubFav;
+
+        // ==========================================
+        //  輔助工具函式
+        // ==========================================
+        const getDaysLeft = (targetDateStr) => {
+            const now = new Date();
+            now.setHours(0,0,0,0);
+            const target = new Date(targetDateStr);
+            target.setHours(0,0,0,0);
+            return Math.ceil((target - now) / (1000 * 60 * 60 * 24));
+        };
+
+        const formatDate = (date) => {
+            const d = new Date(date);
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        };
+
+        const getStoredConfig = () => {
+            const stored = localStorage.getItem('study_group_firebase_config');
+            if (stored) {
+                try { return JSON.parse(stored); } catch(e) {}
+            }
+            if (typeof __firebase_config !== 'undefined') {
+                try { return JSON.parse(__firebase_config); } catch(e) {}
+            }
+            return null;
+        };
+
+        const getAvatarChar = (u) => {
+            if(usersProfile[u] && usersProfile[u].nickname) return usersProfile[u].nickname.charAt(0);
+            return u ? u.charAt(0) : '?';
+        };
+
+        const getCircleNum = (idx) => {
+            const nums = ['➀','➁','➂','➃','➄','➅','➆','➇','➈','➉','⑪','⑫','⑬','⑭','⑮','⑯','⑰','⑱','⑲','⑳'];
+            return nums[idx] || `(${idx+1})`;
+        };
+
+        // ==========================================
+        //  UI 渲染函式 - 系統框架與登入
+        // ==========================================
+        window.renderApp = () => { 
+            document.getElementById('app').innerHTML = `<div id="view-container" class="w-full h-full flex flex-col relative overflow-hidden bg-white/20"></div>`; 
+            renderGlobalModals();
+        };
+
+        window.renderSetup = () => {
+            const container = document.getElementById('view-container');
+            const currentConfig = getStoredConfig() || {};
+            container.innerHTML = `
+                <div class="flex-1 flex flex-col items-center justify-center p-6 relative z-10 overflow-y-auto">
+                    <div class="glass-panel p-8 md:p-10 rounded-[2.5rem] shadow-2xl z-10 w-[36rem] max-w-[95vw] border-4 border-teal-200 relative overflow-hidden">
+                        <h1 class="text-2xl md:text-3xl font-black text-teal-600 mb-2 drop-shadow-sm text-center">⚙️ 系統資料庫設定</h1>
+                        <p class="text-sm text-gray-500 mb-6 text-center font-bold">請填入您的 Firebase API Key 以啟用雲端同步功能</p>
+                        <div class="space-y-3 bg-white/60 p-6 rounded-2xl border border-teal-100">
+                            <div>
+                                <label class="block text-xs font-bold text-teal-800 mb-1">API Key (必填) *</label>
+                                <input type="text" id="cfg-apiKey" value="${currentConfig.apiKey || ''}" placeholder="AIzaSy..." class="w-full px-3 py-2 rounded-lg border border-teal-200 focus:outline-none focus:border-teal-400 text-sm font-mono">
+                            </div>
+                        </div>
+                        <div class="mt-6 flex gap-3 justify-center">
+                            ${currentConfig.apiKey ? `<button onclick="renderLogin()" class="px-5 py-2.5 rounded-xl font-bold text-gray-500 bg-gray-50 border border-gray-200 hover:bg-gray-100 transition-colors">取消</button>` : ''}
+                            <button onclick="saveFirebaseConfig()" class="flex-1 bg-gradient-to-r from-teal-400 to-emerald-400 text-white font-bold py-2.5 px-6 rounded-xl shadow-md hover:shadow-lg transition-all">
+                                💾 儲存並啟動系統
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        };
+
+        window.renderLogin = () => {
+            const container = document.getElementById('view-container');
+            container.innerHTML = `
+                <div class="flex-1 flex flex-col items-center justify-center p-6 relative z-10 overflow-y-auto">
+                    <div class="glass-panel p-8 md:p-12 rounded-[2.5rem] shadow-2xl z-10 w-[36rem] max-w-[95vw] text-center border-4 border-teal-200 relative overflow-hidden">
+                        <div class="absolute top-4 left-4 text-4xl animate-bounce-slow">📖</div>
+                        <div class="absolute bottom-4 right-4 text-4xl animate-bounce-slow" style="animation-delay: 1s;">💡</div>
+                        <button onclick="renderSetup()" class="absolute top-5 right-5 text-gray-400 hover:text-teal-600 transition-colors bg-white/50 p-2 rounded-full border border-gray-200 hover:bg-white" title="系統設定">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                        </button>
+
+                        <h1 class="text-3xl md:text-4xl font-black text-teal-600 mb-3 drop-shadow-sm tracking-wide">📚 英文單字特訓班</h1>
+                        <h2 class="text-xl font-bold text-indigo-500 mb-8 bg-indigo-50 inline-block px-6 py-2 rounded-full border border-indigo-100">Level 1 - 6 單字攻克 💯</h2>
+                        
+                        <div class="bg-white/60 p-6 rounded-3xl border border-teal-100 mb-6">
+                            <p class="text-sm text-teal-600 font-bold mb-3">👇 點擊你的暱稱登入 👇</p>
+                            <div class="flex flex-wrap justify-center gap-3">
+                                ${globalUsers.length > 0 ? 
+                                    globalUsers.map(u => {
+                                        const dispName = usersProfile[u]?.nickname || u;
+                                        return `<button onclick="initiateLogin('${u}')" class="flex items-center gap-2 text-md font-bold bg-white border-2 border-teal-200 text-teal-700 hover:bg-teal-50 hover:scale-105 py-1.5 pl-2 pr-4 rounded-xl shadow-sm transition-all">
+                                            <div class="${getUserColor(u)} w-8 h-8 rounded-full flex items-center justify-center text-sm font-black shadow-sm border-2 border-white shrink-0">${getAvatarChar(u)}</div>
+                                            <span>${dispName}</span>
+                                        </button>`;
+                                    }).join('') 
+                                    : `<span class="text-sm text-gray-400">尚無學習者，請點擊下方註冊</span>`
+                                }
+                            </div>
+                        </div>
+                        
+                        <div class="flex gap-2 w-full mt-2">
+                            <button onclick="openProfileEditModal('', true)" class="w-full bg-gradient-to-r from-teal-400 to-emerald-500 text-white font-black py-4 px-6 text-xl rounded-2xl shadow-md hover:shadow-lg transition-all transform hover:scale-[1.02]">
+                                🚀 註冊新帳號
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        };
+
+        window.renderMain = () => {
+            const container = document.getElementById('view-container');
+            container.innerHTML = `
+                <div class="bg-white/80 backdrop-blur-md border-b-2 border-teal-200 p-3 flex justify-between items-center shadow-sm shrink-0 z-20 relative">
+                    <div class="flex items-center gap-4 pl-2">
+                        <h1 class="text-2xl md:text-3xl font-black text-teal-700 tracking-wider">📚 英文單字特訓班</h1>
+                    </div>
+                    <div class="flex items-center gap-2 md:gap-3 pr-2 flex-wrap justify-end">
+                        ${isAdmin ? `<button onclick="window.open('migration_tool.html', '_blank')" class="bg-gradient-to-r from-amber-400 to-orange-400 text-white font-bold px-3 py-1.5 rounded-lg shadow-sm hover:scale-105 transition-transform text-sm shrink-0 hidden lg:block">⚙️ 題庫管理</button>` : ''}
+                        ${isAdmin ? `<button onclick="openAdminPanel()" class="bg-gradient-to-r from-gray-500 to-gray-600 text-white font-bold px-3 py-1.5 rounded-lg shadow-sm hover:scale-105 transition-transform text-sm shrink-0 hidden lg:block">管理員設定</button>` : ''}
+                        
+                        <button onclick="openProgressModal()" class="font-bold text-orange-700 bg-orange-50 px-2 md:px-3 py-1.5 rounded-lg border border-orange-200 shadow-sm hover:bg-orange-100 transition-colors text-sm flex items-center gap-1 shrink-0">
+                            📈 <span class="hidden md:inline">進度追蹤</span>
+                        </button>
+                        
+                        <button onclick="openProfileEditModal('${username}')" class="font-bold text-teal-700 bg-teal-50 px-2 md:px-3 py-1.5 rounded-lg border border-teal-200 shadow-sm hover:bg-teal-100 transition-colors text-sm flex items-center gap-1 shrink-0">
+                            <div class="${getUserColor(username)} w-5 h-5 rounded-full flex items-center justify-center text-[10px]">${getAvatarChar(username)}</div>
+                            <span class="hidden md:inline">我的資料卡</span>
+                        </button>
+                        
+                        <button onclick="logout()" class="text-rose-500 hover:bg-rose-50 font-bold px-2 md:px-3 py-1.5 rounded-lg transition-colors text-sm border border-rose-200 bg-white shadow-sm shrink-0">登出 👋</button>
+                    </div>
+                </div>
+
+                <div class="flex-1 flex flex-col md:flex-row overflow-hidden">
+                    <div class="w-full md:w-60 lg:w-72 flex flex-col bg-white/50 border-b-2 md:border-b-0 md:border-r-2 border-teal-100 z-10 shrink-0 h-full min-h-0">
+                        <div id="sidebar-countdowns" class="p-4 flex flex-col border-b-2 border-teal-100 shrink-0 h-[45%] min-h-[250px] relative overflow-hidden"></div>
+                        <div class="flex-1 flex flex-col bg-white/60 overflow-hidden relative min-h-0">
+                            <div class="bg-teal-100/50 p-2 text-center font-bold text-teal-600 border-b border-teal-100 text-sm shadow-sm shrink-0">💬 加油打氣留言板</div>
+                            <div id="chat-messages" class="flex-1 overflow-y-auto p-3 space-y-3 custom-scrollbar text-sm relative min-h-0"></div>
+                            
+                            <div class="p-2 bg-white flex flex-col border-t border-teal-100 relative shrink-0">
+                                <div id="emoji-picker" class="hidden absolute bottom-full left-2 mb-2 bg-white border border-teal-200 p-2 rounded-xl shadow-lg grid grid-cols-5 gap-2 z-50">
+                                    ${['😀','😂','🥰','😎','🥺','💪','🔥','💯','📚','🎓','✨','🎉','📝','🏆','💖'].map(e => `<button onclick="insertEmoji('${e}')" class="text-xl hover:scale-125 transition-transform">${e}</button>`).join('')}
+                                </div>
+                                <div class="flex gap-1.5 items-center w-full">
+                                    <button id="emoji-toggle-btn" onclick="toggleEmojiPicker(event)" class="text-2xl hover:bg-teal-50 px-1 rounded-lg transition-colors shrink-0">😀</button>
+                                    <div class="flex-1 min-w-0">
+                                        <input type="text" id="chatInput" placeholder="說點什麼..." class="w-full px-3 py-2 rounded-lg border border-teal-200 focus:outline-none focus:border-teal-400 bg-gray-50 text-sm" onkeypress="if(event.key === 'Enter') sendChat()">
+                                    </div>
+                                    <button onclick="sendChat()" class="bg-teal-500 text-white px-3 py-2 rounded-lg font-bold hover:bg-teal-600 transition-colors shrink-0 whitespace-nowrap text-sm">送出</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex-1 bg-white/30 p-4 flex flex-col relative z-0 min-w-0">
+                        <div class="flex justify-between items-center mb-4 bg-white/80 p-3 rounded-2xl border border-teal-100 shadow-sm shrink-0">
+                            <button onclick="changeMonth(-1)" class="px-3 py-1.5 md:px-4 md:py-2 bg-teal-50 border border-teal-200 hover:bg-teal-100 text-teal-700 rounded-xl font-bold transition-colors shadow-sm text-sm md:text-base whitespace-nowrap">◀ 上個月</button>
+                            <div class="flex flex-col items-center flex-1 mx-2 overflow-hidden" id="calendar-header-container"></div>
+                            <button onclick="changeMonth(1)" class="px-3 py-1.5 md:px-4 md:py-2 bg-teal-50 border border-teal-200 hover:bg-teal-100 text-teal-700 rounded-xl font-bold transition-colors shadow-sm text-sm md:text-base whitespace-nowrap">下個月 ▶</button>
+                        </div>
+                        <div id="calendar-grid" class="flex-1 flex flex-col min-h-0"></div>
+                    </div>
+
+                    <div class="w-full md:w-60 lg:w-72 flex flex-col bg-white/60 z-10 shrink-0 border-l-2 border-rose-100 min-h-0 h-full">
+                        <div class="bg-gradient-to-r from-rose-100 to-pink-100 p-2 text-center font-bold text-rose-600 shadow-sm shrink-0 text-sm flex justify-center items-center gap-1">❤️ 我的最愛單字</div>
+                        <div id="favorites-feed" class="flex-1 overflow-y-auto p-3 space-y-3 custom-scrollbar"></div>
+                    </div>
+                </div>
+            `;
+            if (username) {
+                window.renderSidebar();
+                window.renderMainContent();
+                window.renderChat();
+            }
+        };
+
+        // 全域 Modals 渲染
+        const renderGlobalModals = () => {
+            const container = document.getElementById('modals-container');
+            container.innerHTML = `
+                <!-- 輸入密碼登入 Modal -->
+                <div id="login-pwd-modal" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm hidden items-center justify-center z-[70] p-4 transition-opacity duration-200 opacity-0">
+                    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden border-4 border-teal-200 transform scale-95 transition-transform duration-200 flex flex-col p-6">
+                        <h2 class="text-2xl font-black text-teal-600 mb-4 text-center">🔐 安全登入</h2>
+                        <p class="text-center font-bold text-gray-600 mb-4" id="login-pwd-username-display"></p>
+                        <input type="hidden" id="login-pwd-username">
+                        <input type="password" id="login-pwd-input" placeholder="請輸入密碼" class="w-full px-4 py-3 rounded-xl border-2 border-teal-200 focus:outline-none focus:border-teal-400 text-center font-bold text-lg mb-6" onkeypress="if(event.key === 'Enter') confirmLoginPassword()">
+                        <div class="flex gap-3">
+                            <button onclick="closeGlobalModal('login-pwd-modal')" class="flex-1 px-4 py-2.5 rounded-xl font-bold text-gray-500 bg-gray-50 border border-gray-200 hover:bg-gray-100">取消</button>
+                            <button onclick="confirmLoginPassword()" class="flex-1 px-4 py-2.5 rounded-xl font-bold text-white bg-teal-500 hover:bg-teal-600 shadow-md">登入</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 註冊/編輯個人資料卡 Modal -->
+                <div id="profile-edit-modal" class="fixed inset-0 bg-gray-900/70 backdrop-blur-sm hidden items-center justify-center z-[80] p-4 transition-opacity duration-200 opacity-0">
+                    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden border-4 border-teal-300 transform scale-95 transition-transform duration-200 flex flex-col" style="max-height: 95vh;">
+                        <div class="bg-gradient-to-r from-teal-500 to-emerald-600 p-4 flex justify-between items-center text-white shrink-0">
+                            <h2 class="text-xl font-bold" id="profile-modal-title">📝 設定專屬資料卡</h2>
+                            <button onclick="closeGlobalModal('profile-edit-modal')" id="profile-modal-close" class="hover:bg-white/20 rounded-full w-8 h-8 flex items-center justify-center font-bold">✕</button>
+                        </div>
+                        <div class="p-6 overflow-y-auto flex-1 custom-scrollbar space-y-4 bg-teal-50/30">
+                            <div>
+                                <label class="block text-teal-800 font-bold mb-1 text-sm">真實姓名 (登入帳號) <span class="text-red-500">*</span></label>
+                                <input type="text" id="prof-name" placeholder="請輸入真實姓名" class="w-full px-3 py-2 rounded-lg border-2 border-teal-200 bg-white focus:outline-none focus:border-teal-400 font-bold text-gray-700">
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-teal-800 font-bold mb-1 text-sm">設定密碼 (必填) <span class="text-xs font-normal text-red-400" id="pwd-hint"></span> <span class="text-red-500">*</span></label>
+                                    <input type="text" id="prof-pwd" placeholder="請設定登入密碼" class="w-full px-3 py-2 rounded-lg border-2 border-teal-200 bg-white focus:outline-none focus:border-teal-400">
+                                </div>
+                                <div>
+                                    <label class="block text-teal-800 font-bold mb-1 text-sm">確認密碼 (必填) <span class="text-red-500">*</span></label>
+                                    <input type="text" id="prof-pwd-confirm" placeholder="請再次輸入密碼" class="w-full px-3 py-2 rounded-lg border-2 border-teal-200 bg-white focus:outline-none focus:border-teal-400">
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-teal-800 font-bold mb-1 text-sm">顯示暱稱 (必填) <span class="text-red-500">*</span></label>
+                                    <input type="text" id="prof-nickname" placeholder="例如: 小明" class="w-full px-3 py-2 rounded-lg border-2 border-teal-200 bg-white focus:outline-none focus:border-teal-400">
+                                </div>
+                                <div>
+                                    <label class="block text-teal-800 font-bold mb-1 text-sm">生日 (選填)</label>
+                                    <input type="date" id="prof-birthday" class="w-full px-3 py-2 rounded-lg border-2 border-teal-200 bg-white focus:outline-none focus:border-teal-400">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-teal-800 font-bold mb-1 text-sm">第一志願 / 目標 (選填)</label>
+                                <input type="text" id="prof-target" placeholder="例如: 多益 900 分..." class="w-full px-3 py-2 rounded-lg border-2 border-teal-200 bg-white focus:outline-none focus:border-teal-400">
+                            </div>
+                            <div>
+                                <label class="block text-teal-800 font-bold mb-1 text-sm">座右銘 (選填)</label>
+                                <input type="text" id="prof-motto" placeholder="一句鼓勵自己的話！" class="w-full px-3 py-2 rounded-lg border-2 border-teal-200 bg-white focus:outline-none focus:border-teal-400">
+                            </div>
+                            <div>
+                                <label class="block text-teal-800 font-bold mb-1 text-sm">大頭貼照片 (選填)</label>
+                                <div class="border-2 border-dashed border-teal-300 rounded-xl p-3 text-center bg-white hover:bg-teal-50 transition-colors cursor-pointer" onclick="document.getElementById('prof-photo-upload').click()">
+                                    <input type="file" id="prof-photo-upload" accept="image/*" class="hidden" onchange="handleProfilePhoto(event)">
+                                    <img id="prof-photo-preview" class="h-20 w-20 object-cover rounded-full mx-auto hidden shadow-sm border-2 border-teal-200 mb-2">
+                                    <div id="prof-photo-placeholder" class="text-teal-500 text-sm font-bold">點擊上傳大頭貼 📷</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="p-4 bg-white border-t border-teal-100 flex justify-end shrink-0">
+                            <button onclick="saveProfile()" class="px-6 py-2.5 rounded-xl font-bold text-white bg-teal-500 hover:bg-teal-600 shadow-md w-full md:w-auto">儲存並進入 🚀</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 選擇單字等級 Modal -->
+                <div id="level-select-modal" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm hidden items-center justify-center z-[70] p-4 transition-opacity duration-200 opacity-0" onclick="if(event.target === this) closeGlobalModal('level-select-modal')">
+                    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden border-4 border-indigo-200 transform scale-95 transition-transform duration-200 flex flex-col p-6 relative">
+                        <div class="absolute top-4 left-4 text-3xl opacity-20 pointer-events-none">📚</div>
+                        <div class="absolute top-4 right-4 text-3xl opacity-20 pointer-events-none">✨</div>
+                        
+                        <h2 class="text-2xl font-black text-indigo-700 mb-2 text-center mt-2">選擇學習難度</h2>
+                        <p class="text-center font-bold text-gray-500 mb-6 text-sm">系統將自動接續您的學習進度！<br><span id="level-modal-date" class="text-xs text-indigo-400 bg-indigo-50 px-2 py-0.5 rounded mt-2 inline-block"></span></p>
+                        
+                        <div class="grid grid-cols-2 gap-4">
+                            ${LEVELS.map(lvl => `<button onclick="startLearning('${lvl}')" class="py-4 rounded-xl border-2 border-indigo-200 text-indigo-600 font-black text-lg hover:bg-indigo-500 hover:text-white transition-all bg-white shadow-sm hover:scale-[1.02]">${lvl}</button>`).join('')}
+                        </div>
+                        <button onclick="closeGlobalModal('level-select-modal')" class="mt-6 w-full py-2.5 rounded-xl font-bold text-gray-500 bg-gray-50 border border-gray-200 hover:bg-gray-100">取消</button>
+                    </div>
+                </div>
+
+                <!-- 單字學習 Flashcard Modal -->
+                <div id="learning-modal" class="fixed inset-0 bg-gray-900/80 backdrop-blur-sm hidden items-center justify-center z-[80] p-4 transition-opacity duration-200 opacity-0">
+                    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-xl overflow-hidden border-4 border-indigo-300 transform scale-95 transition-transform duration-200 flex flex-col" style="max-height: 90vh;">
+                        <div class="bg-gradient-to-r from-indigo-500 to-purple-600 p-4 flex justify-between items-center text-white shrink-0">
+                            <h2 class="text-xl font-bold flex items-center gap-2">📖 單字特訓 <span id="learning-modal-title-badge" class="bg-white/20 px-2 py-0.5 rounded text-sm"></span></h2>
+                            <button onclick="closeGlobalModal('learning-modal')" class="hover:bg-white/20 rounded-full w-8 h-8 flex items-center justify-center font-bold">✕</button>
+                        </div>
+                        <div class="p-6 overflow-y-auto flex-1 custom-scrollbar bg-indigo-50/30 flex items-center justify-center min-h-[300px]" id="learning-content">
+                            <!-- Flashcard 內容動態注入 -->
+                        </div>
+                        <div class="p-4 bg-white border-t border-indigo-100 flex justify-center shrink-0">
+                            <button onclick="nextWord()" id="btn-next-word" class="w-full md:w-2/3 px-6 py-3.5 rounded-xl font-black text-white bg-indigo-500 hover:bg-indigo-600 shadow-lg hover:shadow-xl transition-all text-lg">下一個 ➡️</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 進度追蹤 Modal -->
+                <div id="progress-modal" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm hidden items-center justify-center z-[70] p-4 transition-opacity duration-200 opacity-0" onclick="if(event.target === this) closeGlobalModal('progress-modal')">
+                    <div class="bg-white rounded-[2rem] shadow-2xl w-full max-w-2xl overflow-hidden border-4 border-orange-200 transform scale-95 transition-transform duration-200 flex flex-col relative" style="max-height: 90vh;">
+                        <div class="bg-gradient-to-r from-orange-400 to-amber-500 p-4 flex justify-between items-center text-white shrink-0">
+                            <h2 class="text-xl font-bold flex items-center gap-2" id="progress-user-name">📈 單字闖關進度</h2>
+                            <button onclick="closeGlobalModal('progress-modal')" class="hover:bg-white/20 rounded-full w-8 h-8 flex items-center justify-center font-bold">✕</button>
+                        </div>
+                        <div class="p-6 bg-gray-50/50 overflow-y-auto flex-1 custom-scrollbar" id="progress-content">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 瀏覽公開資料卡 Modal -->
+                <div id="view-profile-modal" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm hidden items-center justify-center z-[80] p-4 transition-opacity duration-200 opacity-0" onclick="if(event.target === this) closeGlobalModal('view-profile-modal')">
+                    <div class="bg-white rounded-[2rem] shadow-2xl w-full max-w-sm overflow-hidden transform scale-95 transition-transform duration-200 flex flex-col relative border-4 border-teal-100">
+                        <button onclick="closeGlobalModal('view-profile-modal')" class="absolute top-4 right-4 bg-black/20 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold z-10 hover:bg-black/40">✕</button>
+                        <div class="h-32 bg-gradient-to-r from-teal-400 to-emerald-500 w-full relative"></div>
+                        <div class="px-6 pb-6 pt-0 relative flex flex-col items-center mt-[-3rem]">
+                            <img id="vp-photo" src="" class="w-24 h-24 rounded-full border-4 border-white shadow-lg object-cover bg-teal-50 mb-3" style="display:none;">
+                            <div id="vp-avatar-fallback" class="w-24 h-24 rounded-full border-4 border-white shadow-lg flex items-center justify-center text-3xl font-black mb-3"></div>
+                            
+                            <h2 class="text-2xl font-black text-gray-800" id="vp-nickname"></h2>
+                            <p class="text-sm text-gray-400 font-bold mb-4" id="vp-name"></p>
+                            
+                            <div class="w-full space-y-3 text-sm">
+                                <div class="bg-rose-50 rounded-xl p-3 border border-rose-100 text-center">
+                                    <div class="text-xs text-rose-400 font-bold mb-1">🎯 目標</div>
+                                    <div class="font-black text-rose-600 text-lg" id="vp-target">-</div>
+                                </div>
+                                <div class="bg-gray-50 rounded-xl p-3 border border-gray-100 text-center">
+                                    <div class="text-xs text-gray-400 font-bold mb-1">💡 座右銘</div>
+                                    <div class="font-bold text-gray-600 italic" id="vp-motto">無</div>
+                                </div>
+                                <div class="text-center text-xs text-gray-400 font-bold mt-2" id="vp-birthday"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 管理員面板 Modal -->
+                <div id="admin-panel-modal" class="fixed inset-0 bg-gray-900/80 backdrop-blur-sm hidden items-center justify-center z-[90] p-4 transition-opacity duration-200 opacity-0">
+                    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-4xl overflow-hidden border-4 border-gray-300 transform scale-95 transition-transform duration-200 flex flex-col h-[90vh]">
+                        <div class="bg-gradient-to-r from-gray-600 to-gray-800 p-4 flex justify-between items-center text-white shrink-0">
+                            <h2 class="text-2xl font-black">👑 管理員面板</h2>
+                            <button onclick="closeGlobalModal('admin-panel-modal')" class="hover:bg-white/20 rounded-full w-8 h-8 flex items-center justify-center font-bold">✕</button>
+                        </div>
+                        
+                        <div class="flex border-b border-gray-200 shrink-0 bg-gray-50">
+                            <button onclick="switchAdminTab('dates')" id="tab-btn-dates" class="flex-1 py-3 font-black text-gray-800 border-b-4 border-gray-800 bg-white">📅 考試日程</button>
+                            <button onclick="switchAdminTab('users')" id="tab-btn-users" class="flex-1 py-3 font-bold text-gray-500 border-b-4 border-transparent hover:bg-gray-100">👤 學習者管理</button>
+                        </div>
+                        
+                        <div class="flex-1 overflow-y-auto p-4 md:p-6 bg-gray-50/50 relative">
+                            <div id="admin-tab-dates" class="space-y-4 block">
+                                <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col md:flex-row gap-2">
+                                    <input type="text" id="admin-new-date-title" placeholder="新增重大日程名稱" class="flex-1 px-3 py-2 rounded-lg border border-gray-300">
+                                    <input type="date" id="admin-new-date-value" class="w-full md:w-48 px-3 py-2 rounded-lg border border-gray-300">
+                                    <button onclick="adminAddDate()" class="bg-gray-700 text-white font-bold px-4 py-2 rounded-lg hover:bg-gray-800">新增</button>
+                                </div>
+                                <div id="admin-dates-list" class="space-y-2"></div>
+                            </div>
+                            
+                            <div id="admin-tab-users" class="hidden">
+                                <div class="overflow-x-auto rounded-xl border border-gray-200 shadow-sm bg-white">
+                                    <table class="w-full text-left text-sm whitespace-nowrap">
+                                        <thead class="bg-gray-100 text-gray-600 font-bold border-b border-gray-200">
+                                            <tr>
+                                                <th class="p-3">帳號 (真實姓名)</th>
+                                                <th class="p-3">暱稱</th>
+                                                <th class="p-3">密碼</th>
+                                                <th class="p-3 text-right">操作</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="admin-users-list" class="divide-y divide-gray-100"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 編輯單筆日程 Modal -->
+                <div id="edit-date-modal" class="fixed inset-0 bg-gray-900/60 hidden items-center justify-center z-[100] p-4">
+                    <div class="bg-white p-6 rounded-2xl w-full max-w-sm">
+                        <h3 class="font-bold mb-4">修改日程</h3>
+                        <input type="hidden" id="edit-date-index">
+                        <input type="text" id="edit-date-title" class="w-full mb-3 px-3 py-2 border rounded">
+                        <input type="date" id="edit-date-value" class="w-full mb-4 px-3 py-2 border rounded">
+                        <div class="flex gap-2">
+                            <button onclick="closeGlobalModal('edit-date-modal')" class="flex-1 py-2 bg-gray-100 rounded font-bold">取消</button>
+                            <button onclick="saveEditedDate()" class="flex-1 py-2 bg-gray-700 text-white rounded font-bold">儲存</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        };
+
+        window.openGlobalModal = (id) => {
+            const modal = document.getElementById(id);
+            if(!modal) return;
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                const inner = modal.firstElementChild;
+                if(inner.classList.contains('scale-95')) inner.classList.remove('scale-95');
+            }, 10);
+        };
+
+        window.closeGlobalModal = (id) => {
+            const modal = document.getElementById(id);
+            if(!modal) return;
+            modal.classList.add('opacity-0');
+            const inner = modal.firstElementChild;
+            if(inner && inner.classList.contains('scale-95') === false) inner.classList.add('scale-95');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }, 200);
+        };
+
+        // ==========================================
+        //  進度追蹤 Modal 邏輯
+        // ==========================================
+        window.openProgressModal = () => {
+            const targetUser = viewingUser === 'ALL' ? username : viewingUser;
+            if (!targetUser) return;
+            const dispName = usersProfile[targetUser]?.nickname || targetUser;
+            document.getElementById('progress-user-name').innerText = `📈 ${dispName} 的單字進度`;
+
+            let html = '<div class="space-y-4">';
+            LEVELS.forEach(lvl => {
+                const levelWords = Object.values(allVocab).filter(v => v.level === lvl);
+                const totalWords = levelWords.length;
+                const progressDocId = `${targetUser}_${lvl}`;
+                const learnedWords = allProgress[progressDocId]?.lastIndex || 0;
+                
+                const percent = totalWords > 0 ? Math.min(100, Math.round((learnedWords / totalWords) * 100)) : 0;
+                
+                html += `
+                    <div class="bg-white p-4 rounded-2xl shadow-sm border border-orange-100">
+                        <div class="flex justify-between items-end mb-2">
+                            <h4 class="font-black text-lg text-orange-700">${lvl}</h4>
+                            <span class="text-sm font-bold text-gray-500">${learnedWords} / ${totalWords} 字</span>
+                        </div>
+                        <div class="w-full bg-gray-100 rounded-full h-4 overflow-hidden border border-gray-200">
+                            <div class="bg-gradient-to-r from-orange-400 to-amber-500 h-4 rounded-full transition-all duration-500" style="width: ${percent}%"></div>
+                        </div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+
+            document.getElementById('progress-content').innerHTML = html;
+            openGlobalModal('progress-modal');
+        };
+
+        // ==========================================
+        //  通用動作邏輯 (設定、登出、聊天等) 
+        // ==========================================
+        window.saveFirebaseConfig = () => {
+            const apiKey = document.getElementById('cfg-apiKey').value.trim();
+            if (!apiKey) return alert("API Key 為必填欄位！");
+            localStorage.setItem('study_group_firebase_config', JSON.stringify({ apiKey }));
+            alert("設定已儲存！系統將重新啟動。");
+            window.location.reload(); 
+        };
+
+        window.logout = () => {
+            username = ''; viewingUser = 'ALL'; isAdmin = false;
+            localStorage.removeItem('study_group_user');
+            
+            if(unsubDates) unsubDates();
+            if(unsubChat) unsubChat();
+            if(unsubUsers) unsubUsers();
+            if(unsubProfile) unsubProfile();
+            if(unsubVocab) unsubVocab();
+            if(unsubProgress) unsubProgress();
+            if(unsubActivity) unsubActivity();
+            if(unsubFav) unsubFav();
+            
+            chatMessages = []; importantDates = [];
+            allVocab = {}; allProgress = {}; allActivities = {}; allFavorites = {};
+            
+            setupLoginListener();
+            window.renderLogin();
+        };
+
+        window.sendChat = async () => {
+            const input = document.getElementById('chatInput');
+            const text = input.value.trim();
+            if(!text) return;
+            
+            const newMsg = { user: username, text: text, timestamp: new Date().toISOString() };
+            const newChat = [...chatMessages, newMsg];
+            if(newChat.length > 50) newChat.shift();
+            
+            await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'System', 'Chat'), { messages: newChat });
+            input.value = '';
+        };
+
+        window.insertEmoji = (emoji) => {
+            const input = document.getElementById('chatInput');
+            input.value += emoji;
+            input.focus();
+            document.getElementById('emoji-picker').classList.add('hidden');
+        };
+
+        window.toggleEmojiPicker = (e) => {
+            e.stopPropagation();
+            const picker = document.getElementById('emoji-picker');
+            picker.classList.toggle('hidden');
+        };
+
+        document.addEventListener('click', (e) => {
+            const emojiPicker = document.getElementById('emoji-picker');
+            const toggleBtn = document.getElementById('emoji-toggle-btn');
+            if (emojiPicker && !emojiPicker.classList.contains('hidden')) {
+                if (!emojiPicker.contains(e.target) && e.target !== toggleBtn) emojiPicker.classList.add('hidden');
+            }
+        });
+
+        // ==========================================
+        //  登入/註冊/個資 邏輯
+        // ==========================================
+        window.initiateLogin = (name) => {
+            const trimmed = name.trim();
+            if(!trimmed) return alert("請傳入名稱！");
+            
+            if (globalUsers.includes(trimmed) && usersProfile[trimmed]) {
+                document.getElementById('login-pwd-username').value = trimmed;
+                const dispName = usersProfile[trimmed]?.nickname || trimmed;
+                document.getElementById('login-pwd-username-display').innerText = `你好，${dispName}！請輸入密碼以繼續：`;
+                document.getElementById('login-pwd-input').value = '';
+                openGlobalModal('login-pwd-modal');
+                setTimeout(() => document.getElementById('login-pwd-input').focus(), 100);
+            }
+        };
+
+        window.confirmLoginPassword = () => {
+            const name = document.getElementById('login-pwd-username').value;
+            const pwd = document.getElementById('login-pwd-input').value;
+            if (name === 'Nick' && pwd !== '2iligloi') return alert("Nick 為管理員保留帳號，密碼錯誤！");
+            if (usersProfile[name] && usersProfile[name].password !== pwd) return alert("密碼錯誤，請重試！");
+            
+            closeGlobalModal('login-pwd-modal');
+            doCompleteLogin(name);
+        };
+
+        window.openProfileEditModal = (name = '', isRegister = false) => {
+            const nameInput = document.getElementById('prof-name');
+            nameInput.value = name;
+            
+            if (isRegister && !name) {
+                nameInput.disabled = false;
+                nameInput.classList.remove('bg-gray-100', 'text-gray-500');
+                nameInput.classList.add('bg-white', 'text-gray-700');
+                nameInput.placeholder = "請輸入真實姓名作為登入帳號";
+            } else {
+                nameInput.disabled = true;
+                nameInput.classList.remove('bg-white', 'text-gray-700');
+                nameInput.classList.add('bg-gray-100', 'text-gray-500');
+                nameInput.placeholder = "";
+            }
+            
+            const isNick = (name === 'Nick');
+            const currentPwd = usersProfile[name]?.password || (isNick ? '2iligloi' : '');
+            document.getElementById('prof-pwd').value = currentPwd;
+            document.getElementById('prof-pwd-confirm').value = currentPwd;
+
+            if (isNick && isRegister) {
+                document.getElementById('prof-pwd').disabled = true;
+                document.getElementById('prof-pwd-confirm').disabled = true;
+                document.getElementById('pwd-hint').innerText = "(管理員預設密碼不可修改)";
+            } else {
+                document.getElementById('prof-pwd').disabled = false;
+                document.getElementById('prof-pwd-confirm').disabled = false;
+                document.getElementById('pwd-hint').innerText = "";
+            }
+
+            document.getElementById('prof-nickname').value = usersProfile[name]?.nickname || name;
+            document.getElementById('prof-birthday').value = usersProfile[name]?.birthday || '';
+            document.getElementById('prof-target').value = usersProfile[name]?.target || '';
+            document.getElementById('prof-motto').value = usersProfile[name]?.motto || '';
+            
+            let photo = usersProfile[name]?.photo || '';
+            document.getElementById('prof-photo-upload').dataset.base64 = photo;
+            
+            if (photo) {
+                document.getElementById('prof-photo-preview').src = photo;
+                document.getElementById('prof-photo-preview').classList.remove('hidden');
+                document.getElementById('prof-photo-placeholder').classList.add('hidden');
+            } else {
+                document.getElementById('prof-photo-preview').classList.add('hidden');
+                document.getElementById('prof-photo-placeholder').classList.remove('hidden');
+            }
+
+            document.getElementById('profile-modal-title').innerText = isRegister ? '🚀 歡迎加入！請建立專屬資料卡' : '📝 修改我的資料卡';
+            document.getElementById('profile-modal-close').style.display = isRegister ? 'none' : 'flex'; 
+            
+            openGlobalModal('profile-edit-modal');
+        };
+
+        window.handleProfilePhoto = (e) => {
+            const file = e.target.files[0];
+            if(!file) return;
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const MAX_WIDTH = 400; 
+                    const scale = img.width > MAX_WIDTH ? MAX_WIDTH / img.width : 1;
+                    canvas.width = img.width * scale;
+                    canvas.height = img.height * scale;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    
+                    const base64 = canvas.toDataURL('image/jpeg', 0.8);
+                    document.getElementById('prof-photo-upload').dataset.base64 = base64;
+                    document.getElementById('prof-photo-preview').src = base64;
+                    document.getElementById('prof-photo-preview').classList.remove('hidden');
+                    document.getElementById('prof-photo-placeholder').classList.add('hidden');
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        };
+
+        window.saveProfile = async () => {
+            const nameInput = document.getElementById('prof-name');
+            const name = nameInput.value.trim();
+            const pwd = document.getElementById('prof-pwd').value.trim();
+            const pwdConfirm = document.getElementById('prof-pwd-confirm').value.trim();
+            const nickname = document.getElementById('prof-nickname').value.trim();
+            
+            if(!name) return alert("請輸入真實姓名作為登入帳號！");
+            if(!pwd) return alert("請務必設定登入密碼！");
+            if(pwd !== pwdConfirm) return alert("兩次輸入的密碼不一致，請重新檢查！");
+            if(!nickname) return alert("請輸入顯示暱稱！");
+
+            const isNewUser = !globalUsers.includes(name);
+
+            if (!nameInput.disabled && !isNewUser) {
+                return alert("此真實姓名已存在，請使用該名稱登入，或輸入另一個姓名！");
+            }
+
+            let assignedColor = usersProfile[name]?.color;
+            if (isNewUser) {
+                const usedColors = Object.values(usersProfile).map(p => p.color).filter(Boolean);
+                const availableColors = USER_COLORS.filter(c => !usedColors.includes(c));
+                if (availableColors.length > 0) assignedColor = availableColors[Math.floor(Math.random() * availableColors.length)];
+                else assignedColor = USER_COLORS[Math.floor(Math.random() * USER_COLORS.length)];
+            }
+
+            let updatedProfiles = JSON.parse(JSON.stringify(usersProfile));
+            updatedProfiles[name] = {
+                password: pwd, nickname: nickname,
+                birthday: document.getElementById('prof-birthday').value,
+                target: document.getElementById('prof-target').value,
+                motto: document.getElementById('prof-motto').value,
+                photo: document.getElementById('prof-photo-upload').dataset.base64 || '',
+                color: assignedColor
+            };
+
+            try {
+                if (isNewUser) {
+                    const newUsers = [...globalUsers, name];
+                    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'System', 'UsersList'), { users: newUsers }, { merge: true });
+                }
+                await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'System', 'UsersProfile'), { profiles: updatedProfiles }, { merge: true });
+                
+                closeGlobalModal('profile-edit-modal');
+                
+                if(username !== name) {
+                    doCompleteLogin(name);
+                } else { 
+                    alert("資料卡更新成功！"); 
+                    window.renderMainContent(); 
+                }
+            } catch(e) {
+                console.error(e);
+                alert("儲存失敗！");
+            }
+        };
+
+        const doCompleteLogin = (name) => {
+            username = name; viewingUser = 'ALL'; 
+            isAdmin = (username === 'Nick'); 
+            localStorage.setItem('study_group_user', username);
+            window.renderMain(); 
+            setupListeners();    
+        };
+
+        window.openPublicProfile = (name) => {
+            const prof = usersProfile[name] || {};
+            document.getElementById('vp-nickname').innerText = prof.nickname || name;
+            document.getElementById('vp-name').innerText = `@${name}`;
+            document.getElementById('vp-target').innerText = prof.target || '未設定';
+            document.getElementById('vp-motto').innerText = prof.motto ? `「${prof.motto}」` : '默默努力中...';
+            document.getElementById('vp-birthday').innerText = prof.birthday ? `🎂 ${prof.birthday}` : '';
+
+            const imgEl = document.getElementById('vp-photo');
+            const fallbackEl = document.getElementById('vp-avatar-fallback');
+            
+            if(prof.photo) {
+                imgEl.src = prof.photo;
+                imgEl.style.display = 'block';
+                fallbackEl.style.display = 'none';
+            } else {
+                imgEl.style.display = 'none';
+                fallbackEl.innerText = getAvatarChar(name);
+                fallbackEl.style.display = 'flex';
+                fallbackEl.className = `w-24 h-24 rounded-full border-4 border-white shadow-lg flex items-center justify-center text-3xl font-black mb-3 ${getUserColor(name)}`;
+            }
+            openGlobalModal('view-profile-modal');
+        };
+
+        // ==========================================
+        //  管理員面板邏輯
+        // ==========================================
+        window.openAdminPanel = () => {
+            renderAdminDates();
+            renderAdminUsers();
+            switchAdminTab('dates');
+            openGlobalModal('admin-panel-modal');
+        };
+
+        window.switchAdminTab = (tab) => {
+            if(tab === 'dates') {
+                document.getElementById('admin-tab-dates').classList.remove('hidden');
+                document.getElementById('admin-tab-users').classList.add('hidden');
+                document.getElementById('tab-btn-dates').classList.replace('text-gray-500', 'text-gray-800');
+                document.getElementById('tab-btn-dates').classList.replace('border-transparent', 'border-gray-800');
+                document.getElementById('tab-btn-dates').classList.replace('hover:bg-gray-100', 'bg-white');
+                document.getElementById('tab-btn-users').classList.replace('text-gray-800', 'text-gray-500');
+                document.getElementById('tab-btn-users').classList.replace('border-gray-800', 'border-transparent');
+                document.getElementById('tab-btn-users').classList.replace('bg-white', 'hover:bg-gray-100');
+            } else {
+                document.getElementById('admin-tab-dates').classList.add('hidden');
+                document.getElementById('admin-tab-users').classList.remove('hidden');
+                document.getElementById('tab-btn-users').classList.replace('text-gray-500', 'text-gray-800');
+                document.getElementById('tab-btn-users').classList.replace('border-transparent', 'border-gray-800');
+                document.getElementById('tab-btn-users').classList.replace('hover:bg-gray-100', 'bg-white');
+                document.getElementById('tab-btn-dates').classList.replace('text-gray-800', 'text-gray-500');
+                document.getElementById('tab-btn-dates').classList.replace('border-gray-800', 'border-transparent');
+                document.getElementById('tab-btn-dates').classList.replace('bg-white', 'hover:bg-gray-100');
+            }
+        };
+
+        window.renderAdminDates = () => {
+            const container = document.getElementById('admin-dates-list');
+            const sortedDates = [...importantDates].sort((a, b) => new Date(a.date) - new Date(b.date));
+            container.innerHTML = sortedDates.map((item, index) => `
+                <div class="bg-white p-3 rounded-lg border border-gray-200 flex justify-between items-center shadow-sm">
+                    <div>
+                        <div class="font-bold text-gray-800">${item.title}</div>
+                        <div class="text-sm text-gray-500">${item.date}</div>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="adminEditDate(${index})" class="px-3 py-1.5 bg-blue-50 text-blue-600 rounded font-bold text-sm hover:bg-blue-100">編輯</button>
+                        <button onclick="adminDeleteDate(${index})" class="px-3 py-1.5 bg-red-50 text-red-600 rounded font-bold text-sm hover:bg-red-100">刪除</button>
+                    </div>
+                </div>
+            `).join('');
+        };
+
+        window.adminAddDate = async () => {
+            const title = document.getElementById('admin-new-date-title').value.trim();
+            const date = document.getElementById('admin-new-date-value').value;
+            if(!title || !date) return alert("請填寫完整");
+            const newDates = [...importantDates, { title, date }];
+            await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'System', 'Dates'), { list: newDates });
+            document.getElementById('admin-new-date-title').value = '';
+            document.getElementById('admin-new-date-value').value = '';
+        };
+
+        window.adminEditDate = (index) => {
+            const sortedDates = [...importantDates].sort((a, b) => new Date(a.date) - new Date(b.date));
+            const item = sortedDates[index];
+            const realIndex = importantDates.findIndex(d => d.title === item.title && d.date === item.date);
+            document.getElementById('edit-date-index').value = realIndex;
+            document.getElementById('edit-date-title').value = item.title;
+            document.getElementById('edit-date-value').value = item.date;
+            openGlobalModal('edit-date-modal');
+        };
+
+        window.saveEditedDate = async () => {
+            const idx = parseInt(document.getElementById('edit-date-index').value);
+            const title = document.getElementById('edit-date-title').value.trim();
+            const date = document.getElementById('edit-date-value').value;
+            if(!title || !date) return alert("不可留空");
+            let newDates = [...importantDates];
+            newDates[idx] = { title, date };
+            await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'System', 'Dates'), { list: newDates });
+            closeGlobalModal('edit-date-modal');
+        };
+
+        window.adminDeleteDate = async (index) => {
+            if(!confirm("確定刪除此日程？")) return;
+            const sortedDates = [...importantDates].sort((a, b) => new Date(a.date) - new Date(b.date));
+            const item = sortedDates[index];
+            const realIndex = importantDates.findIndex(d => d.title === item.title && d.date === item.date);
+            
+            const newDates = [...importantDates];
+            newDates.splice(realIndex, 1);
+            await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'System', 'Dates'), { list: newDates });
+        };
+
+        window.renderAdminUsers = () => {
+            const tbody = document.getElementById('admin-users-list');
+            tbody.innerHTML = globalUsers.map(u => {
+                const prof = usersProfile[u] || {};
+                return `
+                    <tr class="hover:bg-gray-50">
+                        <td class="p-3 font-bold text-gray-800">${u}</td>
+                        <td class="p-3 text-gray-600">${prof.nickname || '-'}</td>
+                        <td class="p-3 font-mono text-gray-500">${prof.password || '<span class="text-red-400">未設定</span>'}</td>
+                        <td class="p-3 text-right space-x-1">
+                            <button onclick="openProfileEditModal('${u}')" class="px-2.5 py-1.5 bg-blue-50 text-blue-600 rounded font-bold text-xs hover:bg-blue-100">修改個資/密碼</button>
+                            ${u === 'Nick' ? '' : `<button onclick="adminDeleteUser('${u}')" class="px-2.5 py-1.5 bg-red-50 text-red-600 rounded font-bold text-xs hover:bg-red-100">移除帳號</button>`}
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        };
+
+        window.adminDeleteUser = async (userToDelete) => {
+            if(!confirm(`⚠️ 警告！確定要刪除帳號 [${userToDelete}] 嗎？此操作不可逆！`)) return;
+            
+            try {
+                const newUsers = globalUsers.filter(u => u !== userToDelete);
+                await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'System', 'UsersList'), { users: newUsers });
+
+                let newProfiles = JSON.parse(JSON.stringify(usersProfile));
+                delete newProfiles[userToDelete];
+                await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'System', 'UsersProfile'), { profiles: newProfiles });
+
+                alert(`已成功移除使用者 ${userToDelete}。`);
+                renderAdminUsers();
+            } catch(e) {
+                console.error(e);
+                alert("移除操作失敗！");
+            }
+        };
+
+        // ==========================================
+        //  UI 渲染函式 - 月曆與最愛單字
+        // ==========================================
+        window.renderSidebar = () => {
+            const container = document.getElementById('sidebar-countdowns');
+            if(!container) return;
+            const examDaysLeft = getDaysLeft(EXAM_DATE);
+            let html = `
+                <div class="bg-gradient-to-br from-teal-500 to-emerald-600 rounded-2xl p-5 text-center shadow-lg text-white mb-4 transform hover:scale-[1.02] transition-transform border border-teal-300 shrink-0 z-10 relative">
+                    <h3 class="text-sm font-bold text-teal-100 mb-1">會考大日子 (2027-05-22)</h3>
+                    <div class="text-5xl font-black drop-shadow-md mb-2">${examDaysLeft >= 0 ? examDaysLeft : 0} <span class="text-xl">天</span></div>
+                    <div class="text-xs bg-black/20 rounded-full inline-block px-3 py-1 font-bold">🎯 決戰時刻</div>
+                </div>
+                <h4 class="font-bold text-teal-700 mb-2 flex items-center gap-2 shrink-0 z-10 relative">🗓️ 重要考試里程碑</h4>
+                <div class="marquee-container flex-1 w-full relative z-0 pb-1">
+                    <div class="marquee-content space-y-3 pt-2">
+            `;
+            const sortedDates = [...importantDates].sort((a, b) => new Date(a.date) - new Date(b.date));
+            sortedDates.forEach((item) => {
+                const days = getDaysLeft(item.date);
+                if (days >= 0) {
+                    html += `
+                        <div class="bg-white p-3 rounded-xl border border-teal-100 shadow-sm flex justify-between items-center relative overflow-hidden group">
+                            <div class="absolute left-0 top-0 bottom-0 w-1.5 bg-teal-300"></div>
+                            <div class="pl-2">
+                                <div class="text-sm font-bold text-gray-700">${item.title}</div>
+                                <div class="text-xs text-gray-400">${item.date}</div>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-xl font-black ${days <= 7 ? 'text-rose-500' : 'text-teal-500'}">${days}</span>
+                                <span class="text-xs text-gray-500">天</span>
+                            </div>
+                        </div>
+                    `;
+                }
+            });
+            html += `</div></div>`;
+            container.innerHTML = html;
+        };
+
+        window.renderChat = () => {
+            const container = document.getElementById('chat-messages');
+            if(!container) return;
+            container.innerHTML = chatMessages.map(msg => {
+                const isMe = msg.user === username;
+                const displayName = usersProfile[msg.user]?.nickname || msg.user;
+                return `
+                    <div class="flex flex-col ${isMe ? 'items-end' : 'items-start'}">
+                        <span class="text-[10px] text-gray-400 mb-0.5 px-1">${displayName}</span>
+                        <div class="${isMe ? 'chat-bubble-me border border-blue-100' : 'chat-bubble-other border border-pink-100'} px-3 py-2 text-gray-700 shadow-sm inline-block max-w-[90%] break-words">
+                            ${msg.text}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            container.scrollTop = container.scrollHeight;
+        };
+
+        window.renderFavorites = () => {
+            const container = document.getElementById('favorites-feed');
+            if(!container) return;
+            
+            const myFavIds = Object.values(allFavorites).filter(f => f.user === username).map(f => f.wordId);
+            const myFavWords = myFavIds.map(id => allVocab[id]).filter(Boolean);
+            
+            if(myFavWords.length === 0) {
+                container.innerHTML = `<div class="text-center text-rose-300 font-bold mt-10">尚無收藏的單字<br><span class="text-xs">在學習時點擊愛心即可收藏 ❤️</span></div>`;
+                return;
+            }
+            
+            container.innerHTML = myFavWords.map(w => `
+                <div class="bg-white p-3 rounded-xl border border-rose-100 shadow-sm flex flex-col relative group">
+                    <div class="flex justify-between items-start">
+                        <h4 class="font-black text-lg text-gray-800 pr-6">${w.word}</h4>
+                        <button onclick="toggleFavorite('${w.id}')" class="absolute top-3 right-3 text-rose-500 hover:scale-125 transition-transform" title="取消收藏">❤️</button>
+                    </div>
+                    <div class="text-sm text-teal-600 font-bold mb-1">${w.pos} ${w.meaning}</div>
+                    <button onclick="playAudio('${w.word.replace(/'/g, "\\'")}')" class="absolute bottom-2 right-2 bg-teal-50 text-teal-600 w-8 h-8 flex items-center justify-center rounded-full hover:bg-teal-100 opacity-50 group-hover:opacity-100 transition-opacity">🔊</button>
+                </div>
+            `).join('');
+        };
+
+        window.changeMonth = (delta) => {
+            currentMonth += delta;
+            if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+            if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+            window.renderMainContent();
+        };
+
+        window.changeViewingUser = (user) => {
+            viewingUser = user;
+            window.renderCalendar();
+        };
+
+        window.renderCalendar = () => {
+            const container = document.getElementById('calendar-grid');
+            const headerContainer = document.getElementById('calendar-header-container');
+            if(!container || !headerContainer) return;
+
+            headerContainer.innerHTML = `
+                <h2 class="text-xl md:text-2xl font-black text-teal-600 tracking-wide">${currentYear} 年 ${currentMonth + 1} 月</h2>
+                <select onchange="changeViewingUser(this.value)" class="text-xs md:text-sm font-bold text-teal-700 bg-teal-50 pl-3 pr-7 py-1 md:py-1.5 rounded-full mt-1 border border-teal-200 focus:outline-none focus:ring-2 focus:ring-teal-400 cursor-pointer shadow-sm w-auto max-w-full text-ellipsis overflow-hidden">
+                    <option value="ALL" ${viewingUser === 'ALL' ? 'selected' : ''}>🌍 全部進度</option>
+                    ${globalUsers.map((u, idx) => {
+                        const dispName = usersProfile[u]?.nickname || u;
+                        const circleNum = getCircleNum(idx);
+                        return `<option value="${u}" ${u === viewingUser ? 'selected' : ''}>${circleNum} ${dispName} 的進度</option>`;
+                    }).join('')}
+                </select>
+            `;
+
+            const firstDay = new Date(currentYear, currentMonth, 1).getDay();
+            const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+            const startPad = firstDay === 0 ? 6 : firstDay - 1;
+
+            let html = `<div class="grid grid-cols-7 gap-1 md:gap-2 mb-2 shrink-0">`;
+            ['一', '二', '三', '四', '五', '六', '日'].forEach((d, idx) => {
+                const isWeekend = idx >= 5;
+                html += `<div class="text-center font-bold ${isWeekend ? 'text-rose-500 bg-rose-50' : 'text-teal-700 bg-teal-50'} py-1 md:py-2 text-sm md:text-base rounded-lg md:rounded-xl shadow-sm border border-gray-100">${d}</div>`;
+            });
+            html += `</div><div class="grid grid-cols-7 gap-1 md:gap-2 flex-1 auto-rows-[100px] md:auto-rows-[120px] overflow-y-auto custom-scrollbar pb-4 pr-1 pl-1">`;
+
+            for(let i=0; i<startPad; i++) html += `<div class="bg-white/30 rounded-xl md:rounded-2xl border border-transparent"></div>`;
+
+            for(let d=1; d<=daysInMonth; d++) {
+                const dateStr = `${currentYear}-${String(currentMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+                const isToday = dateStr === formatDate(new Date());
+                const isImportant = importantDates.find(i => i.date === dateStr);
+                
+                const headerClass = isToday 
+                    ? 'bg-gradient-to-r from-teal-400 to-emerald-400 text-white shadow-md' 
+                    : isImportant 
+                        ? 'bg-gradient-to-r from-orange-400 to-rose-400 text-white shadow-md' 
+                        : 'bg-teal-50 text-teal-700';
+
+                // 計算當日學習單字總數
+                let wordsToday = 0;
+                let activeUsers = new Set();
+                Object.values(allActivities).forEach(act => {
+                    if(act.date === dateStr && (viewingUser === 'ALL' || act.user === viewingUser)) {
+                        wordsToday += act.wordsLearned;
+                        activeUsers.add(act.user);
+                    }
+                });
+
+                const clickAction = (viewingUser === username || viewingUser === 'ALL') 
+                    ? `openLevelModal('${dateStr}')` 
+                    : '';
+
+                const activityHtml = wordsToday > 0 ? `<div class="text-[10px] md:text-xs font-bold border border-teal-200 px-1 py-0.5 rounded shadow-sm bg-teal-50 text-teal-700 w-full text-center mt-1">🎓 ${wordsToday} 字</div>` : '';
+                
+                const avatarsHtml = viewingUser === 'ALL' && activeUsers.size > 0 ? Array.from(activeUsers).map(u => `
+                    <div class="${getUserColor(u)} w-4 h-4 md:w-5 md:h-5 rounded-full flex items-center justify-center text-[8px] md:text-[10px] font-bold shadow-sm" title="${usersProfile[u]?.nickname || u}">
+                        ${getAvatarChar(u)}
+                    </div>
+                `).join('') : '';
+
+                let cellHTML = `
+                    <div onclick="${clickAction}" class="bg-white border-2 border-teal-100 p-1 md:p-2 rounded-xl md:rounded-2xl shadow-sm flex flex-col transition-all cursor-pointer hover:border-teal-400 hover:shadow-md hover:-translate-y-1 overflow-hidden group relative h-full">
+                        <div class="flex justify-between items-start shrink-0 mb-0.5 md:mb-1 w-full">
+                            <span class="w-5 h-5 md:w-7 md:h-7 flex items-center justify-center rounded-full text-xs md:text-sm font-bold ${headerClass} shrink-0">${d}</span>
+                            ${isImportant ? `<span class="text-xs md:text-sm drop-shadow-sm group-hover:scale-125 transition-transform shrink-0" title="${isImportant.title}">🔥</span>` : ''}
+                        </div>
+                        <div class="flex flex-wrap justify-end gap-0.5 mb-1 w-full pr-1">
+                            ${avatarsHtml}
+                        </div>
+                        <div class="flex-1 flex flex-col items-center justify-center">
+                            ${activityHtml}
+                        </div>
+                    </div>
+                `;
+
+                html += cellHTML;
+            }
+            html += `</div>`;
+            container.innerHTML = html;
+        };
+
+        window.renderMainContent = () => {
+            if(window.renderCalendar) window.renderCalendar();
+            if(window.renderFavorites) window.renderFavorites();
+            if(isAdmin && !document.getElementById('admin-panel-modal').classList.contains('hidden')) window.renderAdminUsers();
+        };
+
+        // ==========================================
+        //  全新學習流程：選擇 Level 與 學習閃卡
+        // ==========================================
+        window.openLevelModal = (dateStr) => {
+            document.getElementById('level-modal-date').innerText = `選擇日期: ${dateStr}`;
+            modalState.date = dateStr;
+            openGlobalModal('level-select-modal');
+        };
+
+        window.startLearning = (level) => {
+            const progressDocId = `${username}_${level}`;
+            const currentIndex = allProgress[progressDocId]?.lastIndex || 0;
+            
+            const levelWords = Object.values(allVocab).filter(v => v.level === level).sort((a,b) => a.index - b.index);
+            
+            currentLearningBatch = levelWords.slice(currentIndex, currentIndex + 30);
+            
+            if(currentLearningBatch.length === 0) {
+                alert(`恭喜！您已學完 ${level} 的所有題庫單字！`);
+                return;
+            }
+            
+            currentWordIndex = 0;
+            modalState.level = level;
+            
+            document.getElementById('learning-modal-title-badge').innerText = `${level} (第 ${currentIndex + 1} ~ ${currentIndex + currentLearningBatch.length} 字)`;
+            
+            closeGlobalModal('level-select-modal');
+            renderLearningWord();
+            openGlobalModal('learning-modal');
+        };
+
+        window.renderLearningWord = () => {
+            const wordObj = currentLearningBatch[currentWordIndex];
+            if(!wordObj) return;
+
+            const favId = `${username}_${wordObj.id}`;
+            const isFav = !!allFavorites[favId];
+            const isLast = currentWordIndex === currentLearningBatch.length - 1;
+            
+            const safeWord = wordObj.word.replace(/'/g, "\\'");
+            
+            const html = `
+                <div class="flex flex-col items-center w-full p-2 md:p-6 bg-white rounded-2xl border-2 border-indigo-100 shadow-sm relative">
+                    <div class="absolute top-4 left-4 text-gray-400 font-bold text-xs md:text-sm">總序號: #${wordObj.index}</div>
+                    <div class="absolute top-4 right-4 text-indigo-400 font-black text-xs md:text-sm">${currentWordIndex + 1} / ${currentLearningBatch.length}</div>
+                    
+                    <div class="flex items-center gap-3 md:gap-4 mt-8 md:mt-6 mb-4">
+                        <button onclick="toggleFavorite('${wordObj.id}', event)" class="text-2xl md:text-3xl hover:scale-110 transition-transform">
+                            ${isFav ? '❤️' : '🤍'}
+                        </button>
+                        <h2 class="text-3xl md:text-5xl font-black text-gray-800 tracking-wide text-center">${wordObj.word}</h2>
+                        <button onclick="playAudio('${safeWord}', event)" class="text-xl md:text-3xl hover:scale-110 transition-transform bg-indigo-50 w-10 h-10 md:w-14 md:h-14 flex items-center justify-center rounded-full shadow-sm border border-indigo-100 shrink-0">
+                            🔊
+                        </button>
+                    </div>
+                    
+                    <div class="text-lg md:text-2xl text-indigo-600 font-black mb-6 text-center">
+                        <span class="text-gray-500 text-base md:text-lg mr-2 font-bold">${wordObj.pos}</span>${wordObj.meaning}
+                    </div>
+                    
+                    <div class="w-full bg-indigo-50 p-4 md:p-5 rounded-xl border border-indigo-100 flex flex-col gap-2 shadow-inner">
+                        <div class="text-gray-800 font-bold text-base md:text-lg leading-relaxed">"${wordObj.sentence}"</div>
+                        <div class="text-gray-600 font-medium text-sm md:text-base">💡 ${wordObj.translation}</div>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('learning-content').innerHTML = html;
+            
+            const btnNext = document.getElementById('btn-next-word');
+            if(isLast) {
+                btnNext.innerText = '完成本批次 🎉';
+                btnNext.classList.replace('bg-indigo-500', 'bg-green-500');
+                btnNext.classList.replace('hover:bg-indigo-600', 'hover:bg-green-600');
+            } else {
+                btnNext.innerText = '下一個單字 ➡️';
+                btnNext.classList.replace('bg-green-500', 'bg-indigo-500');
+                btnNext.classList.replace('hover:bg-green-600', 'hover:bg-indigo-600');
+            }
+        };
+
+        window.nextWord = async () => {
+            if(currentWordIndex >= currentLearningBatch.length - 1) {
+                // Batch Complete!
+                const progressDocId = `${username}_${modalState.level}`;
+                const currentIndex = allProgress[progressDocId]?.lastIndex || 0;
+                const newIndex = currentIndex + currentLearningBatch.length;
+                
+                try {
+                    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'VocabProgress', progressDocId), {
+                        user: username,
+                        level: modalState.level,
+                        lastIndex: newIndex,
+                        updatedAt: new Date().toISOString()
+                    }, { merge: true });
+                    
+                    const activityId = `${username}_${modalState.date}_${Date.now()}`;
+                    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'VocabActivity', activityId), {
+                        user: username,
+                        date: modalState.date,
+                        level: modalState.level,
+                        wordsLearned: currentLearningBatch.length,
+                        timestamp: new Date().toISOString()
+                    });
+
+                    alert(`🎉 恭喜完成本批次 ${currentLearningBatch.length} 個單字！進度已更新。`);
+                    closeGlobalModal('learning-modal');
+                } catch(e) {
+                    console.error(e);
+                    alert("儲存進度失敗，請檢查網路連線。");
+                }
+            } else {
+                currentWordIndex++;
+                renderLearningWord();
+            }
+        };
+
+        window.playAudio = (text, e) => {
+            if(e) e.stopPropagation();
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'en-US';
+            speechSynthesis.speak(utterance);
+        };
+
+        window.toggleFavorite = async (wordId, e) => {
+            if(e) e.stopPropagation();
+            const favId = `${username}_${wordId}`;
+            try {
+                if(allFavorites[favId]) {
+                    await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'VocabFavorites', favId));
+                } else {
+                    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'VocabFavorites', favId), {
+                        user: username,
+                        wordId: wordId,
+                        addedAt: new Date().toISOString()
+                    });
+                }
+            } catch(err) { console.error(err); }
+        };
+
+        // ==========================================
+        //  Firebase 監聽與初始化
+        // ==========================================
+        const setupLoginListener = () => {
+            if (!currentUser) return;
+            const usersRef = doc(db, 'artifacts', appId, 'public', 'data', 'System', 'UsersList');
+            unsubUsers = onSnapshot(usersRef, (snap) => {
+                if(snap.exists()) {
+                    globalUsers = snap.data().users || [];
+                } else {
+                    globalUsers = [];
+                }
+                if(!username && window.renderLogin) window.renderLogin();
+            }, (err) => console.warn("登入監聽失敗:", err));
+            
+            const profileRef = doc(db, 'artifacts', appId, 'public', 'data', 'System', 'UsersProfile');
+            unsubProfile = onSnapshot(profileRef, (snap) => {
+                if(snap.exists()) {
+                    usersProfile = snap.data().profiles || {};
+                } else {
+                    usersProfile = {};
+                }
+                if(!username && window.renderLogin) window.renderLogin();
+            });
+        };
+
+        const setupListeners = () => {
+            if (!currentUser) return;
+            const errHandler = (err) => console.warn("Firestore Listener Error:", err);
+
+            const usersRef = doc(db, 'artifacts', appId, 'public', 'data', 'System', 'UsersList');
+            if(unsubUsers) unsubUsers();
+            unsubUsers = onSnapshot(usersRef, (snap) => {
+                if(snap.exists()) {
+                    globalUsers = snap.data().users || [];
+                } else {
+                    globalUsers = [];
+                }
+                if (username && !globalUsers.includes(username)) {
+                    alert('⚠️ 系統提示：您的帳號已被管理員移除或系統重置，請重新註冊/登入！');
+                    window.logout(); 
+                }
+            }, errHandler);
+
+            const profileRef = doc(db, 'artifacts', appId, 'public', 'data', 'System', 'UsersProfile');
+            if(unsubProfile) unsubProfile();
+            unsubProfile = onSnapshot(profileRef, (snap) => {
+                if(snap.exists()) {
+                    usersProfile = snap.data().profiles || {};
+                } else {
+                    usersProfile = {};
+                }
+                if(username) window.renderMainContent();
+            }, errHandler);
+
+            const datesRef = doc(db, 'artifacts', appId, 'public', 'data', 'System', 'Dates');
+            if(unsubDates) unsubDates();
+            unsubDates = onSnapshot(datesRef, (snap) => {
+                if(snap.exists()) {
+                    importantDates = snap.data().list || [];
+                } else {
+                    importantDates = [
+                        { date: '2027-05-22', title: '國中教育會考' },
+                        { date: '2026-09-09', title: '第1次模擬考' },
+                        { date: '2026-10-13', title: '第1次段考' },
+                        { date: '2026-10-28', title: '第2次模擬考' }
+                    ];
+                    setDoc(datesRef, { list: importantDates }).catch(errHandler);
+                }
+                if(username) window.renderSidebar();
+                if(isAdmin && !document.getElementById('admin-panel-modal').classList.contains('hidden')) window.renderAdminDates();
+            }, errHandler);
+
+            const chatRef = doc(db, 'artifacts', appId, 'public', 'data', 'System', 'Chat');
+            if(unsubChat) unsubChat();
+            unsubChat = onSnapshot(chatRef, (snap) => {
+                if(snap.exists()) chatMessages = snap.data().messages || [];
+                if(username) window.renderChat();
+            }, errHandler);
+
+            // 題庫資料監聽
+            const vocabCol = collection(db, 'artifacts', appId, 'public', 'data', 'Vocab');
+            if(unsubVocab) unsubVocab();
+            unsubVocab = onSnapshot(vocabCol, (snap) => {
+                allVocab = {};
+                snap.forEach(docSnap => allVocab[docSnap.id] = docSnap.data());
+                // Refresh progress modal if open
+                if(username && document.getElementById('progress-modal') && !document.getElementById('progress-modal').classList.contains('hidden')) window.openProgressModal();
+            }, errHandler);
+
+            // 學習進度監聽
+            const progressCol = collection(db, 'artifacts', appId, 'public', 'data', 'VocabProgress');
+            if(unsubProgress) unsubProgress();
+            unsubProgress = onSnapshot(progressCol, (snap) => {
+                allProgress = {};
+                snap.forEach(docSnap => allProgress[docSnap.id] = docSnap.data());
+                if(username && document.getElementById('progress-modal') && !document.getElementById('progress-modal').classList.contains('hidden')) window.openProgressModal();
+            }, errHandler);
+
+            // 活動紀錄監聽 (日曆顯示用)
+            const activityCol = collection(db, 'artifacts', appId, 'public', 'data', 'VocabActivity');
+            if(unsubActivity) unsubActivity();
+            unsubActivity = onSnapshot(activityCol, (snap) => {
+                allActivities = {};
+                snap.forEach(docSnap => allActivities[docSnap.id] = docSnap.data());
+                if(username) window.renderMainContent();
+            }, errHandler);
+
+            // 最愛單字監聽
+            const favCol = collection(db, 'artifacts', appId, 'public', 'data', 'VocabFavorites');
+            if(unsubFav) unsubFav();
+            unsubFav = onSnapshot(favCol, (snap) => {
+                allFavorites = {};
+                snap.forEach(docSnap => allFavorites[docSnap.id] = docSnap.data());
+                if(username) {
+                    window.renderFavorites();
+                    const learningModal = document.getElementById('learning-modal');
+                    if(learningModal && !learningModal.classList.contains('hidden')) window.renderLearningWord();
+                }
+            }, errHandler);
+        };
+
+        const initApp = async () => {
+            window.renderApp();
+            const config = getStoredConfig();
+            if (!config || !config.apiKey) {
+                window.renderSetup();
+                return;
+            }
+
+            const fullConfig = { ...BASE_FIREBASE_CONFIG, apiKey: config.apiKey };
+            try {
+                if (!appInstance) {
+                    appInstance = initializeApp(fullConfig);
+                    auth = getAuth(appInstance);
+                    db = getFirestore(appInstance);
+                }
+
+                const initAuth = async () => {
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        await signInWithCustomToken(auth, __initial_auth_token);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
+                };
+                await initAuth();
+
+                onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        currentUser = user;
+                        const savedUser = localStorage.getItem('study_group_user');
+                        if (savedUser) {
+                            doCompleteLogin(savedUser); 
+                        } else {
+                            setupLoginListener();
+                            window.renderLogin();
+                        }
+                    }
+                });
+            } catch (error) {
+                console.error("Firebase 連線失敗:", error);
+                alert("Firebase 連線失敗，請檢查系統設定參數是否正確！");
+                window.renderSetup();
+            }
+        };
+
+        initApp();
+
+    </script>
+</body>
+</html>
