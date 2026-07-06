@@ -142,7 +142,7 @@
         let allProgress = {}; 
         let allActivities = {}; 
         let allFavorites = {}; 
-        let allWeakness = {}; // 新增：錯題集中營
+        let allWeakness = {}; // 錯題集中營
         
         let modalState = { date: '', level: '' };
         let currentYear = new Date().getFullYear();
@@ -440,7 +440,7 @@
                         <p class="text-center font-bold text-gray-500 mb-4 text-sm">系統將自動接續您的學習進度！<br><span id="level-modal-date" class="text-xs text-pink-500 bg-pink-50 px-2 py-0.5 rounded mt-2 inline-block shadow-sm"></span></p>
                         
                         <div class="grid grid-cols-2 gap-3 mb-4" id="level-buttons-container">
-                            <!-- 稍後用 JS 填入 -->
+                            <!-- JS 動態填入 -->
                         </div>
                         
                         <div id="level-actions-container" class="flex flex-col gap-2 mt-4 pt-4 border-t border-gray-100 hidden">
@@ -956,6 +956,213 @@
             setupListeners();    
         };
 
+        window.openPublicProfile = (name) => {
+            const prof = usersProfile[name] || {};
+            document.getElementById('vp-nickname').innerText = prof.nickname || name;
+            document.getElementById('vp-name').innerText = `@${name}`;
+            document.getElementById('vp-target').innerText = prof.target || '未設定';
+            document.getElementById('vp-motto').innerText = prof.motto ? `「${prof.motto}」` : '默默努力中...';
+            document.getElementById('vp-birthday').innerText = prof.birthday ? `🎂 ${prof.birthday}` : '';
+
+            const imgEl = document.getElementById('vp-photo');
+            const fallbackEl = document.getElementById('vp-avatar-fallback');
+            
+            if(prof.photo) {
+                imgEl.src = prof.photo;
+                imgEl.style.display = 'block';
+                fallbackEl.style.display = 'none';
+            } else {
+                imgEl.style.display = 'none';
+                fallbackEl.innerText = getAvatarChar(name);
+                fallbackEl.style.display = 'flex';
+                fallbackEl.className = `w-24 h-24 rounded-full border-4 border-white shadow-lg flex items-center justify-center text-3xl font-black mb-3 ${getUserColor(name)}`;
+            }
+            openGlobalModal('view-profile-modal');
+        };
+
+        // ==========================================
+        //  UI 渲染函式 - 月曆與最愛單字
+        // ==========================================
+        window.renderSidebar = () => {
+            const container = document.getElementById('sidebar-countdowns');
+            if(!container) return;
+            const examDaysLeft = getDaysLeft(EXAM_DATE);
+            let html = `
+                <div class="bg-gradient-to-br from-pink-400 to-rose-500 rounded-2xl p-5 text-center shadow-lg text-white mb-4 transform hover:scale-[1.02] transition-transform border border-pink-300 shrink-0 z-10 relative">
+                    <h3 class="text-sm font-bold text-pink-100 mb-1">會考大日子 (2027-05-22)</h3>
+                    <div class="text-5xl font-black drop-shadow-md mb-2">${examDaysLeft >= 0 ? examDaysLeft : 0} <span class="text-xl">天</span></div>
+                    <div class="text-xs bg-black/20 rounded-full inline-block px-3 py-1 font-bold">🎯 決戰時刻</div>
+                </div>
+                <h4 class="font-bold text-pink-700 mb-2 flex items-center gap-2 shrink-0 z-10 relative">🗓️ 重要考試里程碑</h4>
+                <div class="marquee-container flex-1 w-full relative z-0 pb-1">
+                    <div class="marquee-content space-y-3 pt-2">
+            `;
+            const sortedDates = [...importantDates].sort((a, b) => new Date(a.date) - new Date(b.date));
+            sortedDates.forEach((item) => {
+                const days = getDaysLeft(item.date);
+                if (days >= 0) {
+                    html += `
+                        <div class="bg-white p-3 rounded-xl border border-pink-100 shadow-sm flex justify-between items-center relative overflow-hidden group">
+                            <div class="absolute left-0 top-0 bottom-0 w-1.5 bg-pink-400"></div>
+                            <div class="pl-2">
+                                <div class="text-sm font-bold text-gray-700">${item.title}</div>
+                                <div class="text-xs text-gray-400">${item.date}</div>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-xl font-black ${days <= 7 ? 'text-red-500' : 'text-pink-500'}">${days}</span>
+                                <span class="text-xs text-gray-500">天</span>
+                            </div>
+                        </div>
+                    `;
+                }
+            });
+            html += `</div></div>`;
+            container.innerHTML = html;
+        };
+
+        window.renderChat = () => {
+            const container = document.getElementById('chat-messages');
+            if(!container) return;
+            container.innerHTML = chatMessages.map(msg => {
+                const isMe = msg.user === username;
+                const displayName = usersProfile[msg.user]?.nickname || msg.user;
+                return `
+                    <div class="flex flex-col ${isMe ? 'items-end' : 'items-start'}">
+                        <span class="text-[10px] text-gray-400 mb-0.5 px-1">${displayName}</span>
+                        <div class="${isMe ? 'chat-bubble-me' : 'chat-bubble-other'} px-3 py-2 text-gray-700 shadow-sm inline-block max-w-[90%] break-words">
+                            ${msg.text}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            container.scrollTop = container.scrollHeight;
+        };
+
+        window.renderFavorites = () => {
+            const container = document.getElementById('favorites-feed');
+            if(!container) return;
+            
+            const myFavIds = Object.values(allFavorites).filter(f => f.user === username).map(f => f.wordId);
+            const myFavWords = myFavIds.map(id => allVocab[id]).filter(Boolean);
+            
+            if(myFavWords.length === 0) {
+                container.innerHTML = `<div class="text-center text-rose-300 font-bold mt-10">尚無收藏的單字<br><span class="text-xs">在學習時點擊愛心即可收藏 ❤️</span></div>`;
+                return;
+            }
+            
+            container.innerHTML = myFavWords.map(w => `
+                <div class="bg-white p-3 rounded-xl border border-rose-100 shadow-sm flex flex-col relative group">
+                    <div class="flex justify-between items-start">
+                        <h4 class="font-black text-lg text-gray-800 pr-6">${w.word}</h4>
+                        <button onclick="toggleFavorite('${w.id}', event)" class="absolute top-3 right-3 text-rose-500 hover:scale-125 transition-transform" title="取消收藏">❤️</button>
+                    </div>
+                    <div class="text-sm text-pink-600 font-bold mb-1">${w.pos} ${w.meaning}</div>
+                    <button onclick="playAudio('${escapeQuotes(w.word)}', event)" class="absolute bottom-2 right-2 bg-pink-50 text-pink-600 w-8 h-8 flex items-center justify-center rounded-full hover:bg-pink-100 opacity-50 group-hover:opacity-100 transition-opacity text-xs">🔊</button>
+                </div>
+            `).join('');
+        };
+
+        window.changeMonth = (delta) => {
+            currentMonth += delta;
+            if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+            if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+            window.renderMainContent();
+        };
+
+        window.changeViewingUser = (user) => {
+            viewingUser = user;
+            window.renderCalendar();
+        };
+
+        window.renderCalendar = () => {
+            const container = document.getElementById('calendar-grid');
+            const headerContainer = document.getElementById('calendar-header-container');
+            if(!container || !headerContainer) return;
+
+            headerContainer.innerHTML = `
+                <h2 class="text-xl md:text-2xl font-black text-pink-600 tracking-wide">${currentYear} 年 ${currentMonth + 1} 月</h2>
+                <select onchange="changeViewingUser(this.value)" class="text-xs md:text-sm font-bold text-pink-700 bg-pink-50 pl-3 pr-7 py-1 md:py-1.5 rounded-full mt-1 border border-pink-200 focus:outline-none focus:ring-2 focus:ring-pink-400 cursor-pointer shadow-sm w-auto max-w-full text-ellipsis overflow-hidden">
+                    <option value="ALL" ${viewingUser === 'ALL' ? 'selected' : ''}>🌍 全部進度</option>
+                    ${globalUsers.map((u, idx) => {
+                        const dispName = usersProfile[u]?.nickname || u;
+                        const circleNum = getCircleNum(idx);
+                        return `<option value="${u}" ${u === viewingUser ? 'selected' : ''}>${circleNum} ${dispName} 的進度</option>`;
+                    }).join('')}
+                </select>
+            `;
+
+            const firstDay = new Date(currentYear, currentMonth, 1).getDay();
+            const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+            const startPad = firstDay === 0 ? 6 : firstDay - 1;
+
+            let html = `<div class="grid grid-cols-7 gap-1 md:gap-2 mb-2 shrink-0">`;
+            ['一', '二', '三', '四', '五', '六', '日'].forEach((d, idx) => {
+                const isWeekend = idx >= 5;
+                html += `<div class="text-center font-bold ${isWeekend ? 'text-rose-500 bg-rose-50' : 'text-pink-700 bg-pink-50'} py-1 md:py-2 text-sm md:text-base rounded-lg md:rounded-xl shadow-sm border border-gray-100">${d}</div>`;
+            });
+            html += `</div><div class="grid grid-cols-7 gap-1 md:gap-2 flex-1 auto-rows-[100px] md:auto-rows-[120px] overflow-y-auto custom-scrollbar pb-4 pr-1 pl-1">`;
+
+            for(let i=0; i<startPad; i++) html += `<div class="bg-white/30 rounded-xl md:rounded-2xl border border-transparent"></div>`;
+
+            for(let d=1; d<=daysInMonth; d++) {
+                const dateStr = `${currentYear}-${String(currentMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+                const isToday = dateStr === formatDate(new Date());
+                const isImportant = importantDates.find(i => i.date === dateStr);
+                
+                const headerClass = isToday 
+                    ? 'bg-gradient-to-r from-pink-400 to-rose-400 text-white shadow-md' 
+                    : isImportant 
+                        ? 'bg-gradient-to-r from-orange-400 to-red-400 text-white shadow-md' 
+                        : 'bg-pink-50 text-pink-700';
+
+                // 計算當日學習單字總數
+                let wordsToday = 0;
+                let activeUsers = new Set();
+                Object.values(allActivities).forEach(act => {
+                    if(act.date === dateStr && (viewingUser === 'ALL' || act.user === viewingUser)) {
+                        wordsToday += act.wordsLearned;
+                        activeUsers.add(act.user);
+                    }
+                });
+
+                const clickAction = (viewingUser === username || viewingUser === 'ALL') 
+                    ? `openLevelModal('${dateStr}')` 
+                    : '';
+
+                const activityHtml = wordsToday > 0 ? `<div class="text-[10px] md:text-xs font-bold border border-pink-200 px-1 py-0.5 rounded shadow-sm bg-pink-50 text-pink-700 w-full text-center mt-1">🎓 ${wordsToday} 字</div>` : '';
+                
+                const avatarsHtml = viewingUser === 'ALL' && activeUsers.size > 0 ? Array.from(activeUsers).map(u => `
+                    <div class="${getUserColor(u)} w-4 h-4 md:w-5 md:h-5 rounded-full flex items-center justify-center text-[8px] md:text-[10px] font-bold shadow-sm" title="${usersProfile[u]?.nickname || u}">
+                        ${getAvatarChar(u)}
+                    </div>
+                `).join('') : '';
+
+                let cellHTML = `
+                    <div onclick="${clickAction}" class="bg-white border-2 border-pink-100 p-1 md:p-2 rounded-xl md:rounded-2xl shadow-sm flex flex-col transition-all cursor-pointer hover:border-pink-400 hover:shadow-md hover:-translate-y-1 overflow-hidden group relative h-full">
+                        <div class="flex justify-between items-start shrink-0 mb-0.5 md:mb-1 w-full">
+                            <span class="w-5 h-5 md:w-7 md:h-7 flex items-center justify-center rounded-full text-xs md:text-sm font-bold ${headerClass} shrink-0">${d}</span>
+                            ${isImportant ? `<span class="text-xs md:text-sm drop-shadow-sm group-hover:scale-125 transition-transform shrink-0" title="${isImportant.title}">🔥</span>` : ''}
+                        </div>
+                        <div class="flex flex-wrap justify-end gap-0.5 mb-1 w-full pr-1">
+                            ${avatarsHtml}
+                        </div>
+                        <div class="flex-1 flex flex-col items-center justify-center">
+                            ${activityHtml}
+                        </div>
+                    </div>
+                `;
+
+                html += cellHTML;
+            }
+            html += `</div>`;
+            container.innerHTML = html;
+        };
+
+        window.renderMainContent = () => {
+            if(window.renderCalendar) window.renderCalendar();
+            if(window.renderFavorites) window.renderFavorites();
+        };
+
         // ==========================================
         //  全新學習流程：選擇 Level 與 學習列表
         // ==========================================
@@ -983,7 +1190,7 @@
                     <p class="text-xs text-center font-bold text-gray-400 mb-1">您已有學習紀錄，可進行隨堂測驗或複習 👇</p>
                     <div class="flex gap-2">
                         <select id="action-level-select" class="w-1/3 px-2 py-2 rounded-lg border border-gray-300 font-bold text-pink-600 focus:outline-none">
-                            ${LEVELS.map(lvl => `<option value="${lvl}">${lvl}</option>`).join('')}
+                            ${LEVELS.map(lvl => `<option value="${lvl}" ${lvl === currentSelectedLevel ? 'selected' : ''}>${lvl}</option>`).join('')}
                         </select>
                         <button onclick="startQuiz('level', document.getElementById('action-level-select').value)" class="flex-1 py-2 rounded-lg font-black text-white bg-rose-500 hover:bg-rose-600 shadow-sm transition-all text-sm md:text-base">
                             📝 模擬測驗
