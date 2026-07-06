@@ -454,9 +454,6 @@
                             <button onclick="reviewBatch()" class="w-full py-3 rounded-xl font-black text-rose-600 bg-rose-50 border-2 border-rose-200 hover:bg-rose-100 transition-all">
                                 🔄 重新複習這批單字
                             </button>
-                            <button onclick="startEbbinghausFromComplete()" class="w-full py-3 rounded-xl font-black text-orange-600 bg-orange-50 border-2 border-orange-200 hover:bg-orange-100 transition-all shadow-sm">
-                                🧠 進行艾賓浩斯智能複習
-                            </button>
                             <button onclick="closeGlobalModal('complete-modal')" class="w-full py-3 rounded-xl font-black text-white bg-green-500 hover:bg-green-600 shadow-md transition-all">
                                 關閉並回到日曆
                             </button>
@@ -1087,9 +1084,9 @@
                             <button onclick="startLearning('${lvl}')" class="w-full py-4 rounded-xl border-2 border-rose-200 text-rose-600 font-black text-lg hover:bg-rose-500 hover:text-white transition-all bg-white shadow-sm hover:scale-[1.02]">
                                 ${isCompleted ? '再次學習' : '開始/繼續'} ${lvl}
                             </button>
-                            ${learned > 0 ? `
-                                <button onclick="startEbbinghausReview('${lvl}')" class="w-full py-2 rounded-xl bg-orange-50 border border-orange-200 text-orange-600 font-bold hover:bg-orange-100 transition-all shadow-sm text-sm flex items-center justify-center gap-1">
-                                    <span>🧠 艾賓浩斯智能複習 (30字)</span>
+                            ${isCompleted ? `
+                                <button onclick="startReview('${lvl}')" class="w-full py-2 rounded-xl bg-orange-50 border border-orange-200 text-orange-600 font-bold hover:bg-orange-100 transition-all shadow-sm text-sm flex items-center justify-center gap-1">
+                                    <span>🔄 隨機抽考複習 (30字)</span>
                                 </button>
                             ` : ''}
                         </div>
@@ -1142,62 +1139,6 @@
             closeGlobalModal('level-select-modal');
             renderLearningPage();
             openGlobalModal('learning-modal');
-        };
-
-        window.startEbbinghausReview = (level) => {
-            const progressDocId = `${username}_${level}`;
-            const learned = allProgress[progressDocId]?.lastIndex || 0;
-            const levelWords = Object.values(allVocab).filter(v => v.level === level).sort((a,b) => a.index - b.index);
-            
-            if(learned === 0) return alert("您尚未在此等級學習任何單字，請先開始學習！");
-            
-            let pool = levelWords.slice(0, learned);
-            let reviewBatch = [];
-            
-            if (pool.length <= 30) {
-                // 如果學過的單字不足 30 個，直接全部洗牌複習
-                reviewBatch = pool.sort(() => 0.5 - Math.random());
-            } else {
-                // 簡易版艾賓浩斯學習曲線選詞法
-                // 1. 最近學過的單字 (記憶容易模糊，需短期強化) - 取 40% (12字)
-                // 2. 最早學過的單字 (需喚醒長期記憶) - 取 30% (9字)
-                // 3. 中間學過的單字 - 取 30% (9字)
-                let newestPool = pool.slice(-30);
-                let oldestPool = pool.slice(0, 30);
-                let midPool = pool.slice(30, -30);
-                
-                let newest = newestPool.sort(() => 0.5 - Math.random()).slice(0, 12);
-                let oldest = oldestPool.sort(() => 0.5 - Math.random()).slice(0, 9);
-                let mid = midPool.length > 0 ? midPool.sort(() => 0.5 - Math.random()).slice(0, 9) : [];
-                
-                reviewBatch = [...newest, ...oldest, ...mid];
-                
-                // 如果不足 30 字，從剩餘的池子中隨機補滿
-                if(reviewBatch.length < 30) {
-                    let remaining = pool.filter(w => !reviewBatch.includes(w)).sort(() => 0.5 - Math.random());
-                    reviewBatch = [...reviewBatch, ...remaining.slice(0, 30 - reviewBatch.length)];
-                }
-                
-                // 最後將這 30 個字打亂，避免使用者猜出規律
-                reviewBatch = reviewBatch.sort(() => 0.5 - Math.random());
-            }
-            
-            currentLearningBatch = reviewBatch;
-            currentPageIndex = 0;
-            isReviewMode = true;
-            modalState.level = level;
-            
-            document.getElementById('learning-modal-title-badge').innerText = `${level} (艾賓浩斯智能複習 ${currentLearningBatch.length} 字)`;
-            closeGlobalModal('level-select-modal');
-            renderLearningPage();
-            openGlobalModal('learning-modal');
-        };
-
-        window.startEbbinghausFromComplete = () => {
-            closeGlobalModal('complete-modal');
-            setTimeout(() => {
-                window.startEbbinghausReview(modalState.level);
-            }, 300); // 稍微延遲讓動畫過場順暢
         };
 
         window.reviewBatch = () => {
