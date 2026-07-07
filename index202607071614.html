@@ -1887,13 +1887,14 @@
                                 const safeSentence = escapeQuotes(w.sentence);
 
                                 html += `
-                                    <div class="rounded-2xl p-5 shadow-sm border-2 border-red-200 bg-red-50/50 relative flex flex-col hover:shadow-md transition-shadow group pb-14">
+                                    <div class="rounded-2xl p-5 shadow-sm border-2 border-red-200 bg-red-50/50 relative flex flex-col hover:shadow-md transition-shadow group">
                                         <div class="flex items-center gap-3 mt-2 mb-3">
                                             <button onclick="playAudio('${safeWord}', event)" class="w-8 h-8 bg-white text-red-500 rounded-full flex items-center justify-center hover:bg-red-100 transition-colors shadow-sm shrink-0 border border-red-200">
                                                 🔊
-                                            </button>
-                                            <h4 class="font-black text-gray-800 text-xl md:text-2xl leading-tight">${w.word}</h4>
-                                        </div>
+                                    <button onclick="openScoreBoard()" class="bg-white/20 hover:bg-white/30 text-white border border-white/50 px-3 py-1.5 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center gap-1">
+                                        📊 全員進度排行
+                                    </button>
+                                </div>
                                         
                                         <div class="text-red-700 font-bold mb-3">
                                             <span class="text-gray-500 mr-1">${w.pos}</span>${w.meaning}
@@ -1908,9 +1909,6 @@
                                                 </div>
                                             </div>
                                         ` : ''}
-                                        <button onclick="openScoreBoard()" class="absolute bottom-3 left-1/2 transform -translate-x-1/2 bg-white/20 hover:bg-white/30 text-red-600 border border-red-200 px-3 py-1.5 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center gap-1 w-max">
-                                            📊 全員進度排行
-                                        </button>
                                     </div>
                                 `;
                             });
