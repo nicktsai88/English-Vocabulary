@@ -16,7 +16,7 @@
         }
         body {
             font-family: 'Varela Round', 'Noto Sans TC', sans-serif;
-            background-color: #fff0f5; /* 淺櫻花粉背景 */
+            background-color: #fff0f5; 
             background-image: 
                 radial-gradient(#fbcfe8 2px, transparent 2px),
                 radial-gradient(#fce7f3 2px, transparent 2px);
@@ -41,7 +41,6 @@
         .animate-bounce-slow { animation: bounce 3s infinite; }
         @keyframes bounce { 0%, 100% { transform: translateY(-5%); } 50% { transform: translateY(0); } }
 
-        /* 答錯時的震動動畫 */
         .shake { animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both; transform: translate3d(0, 0, 0); }
         @keyframes shake {
             10%, 90% { transform: translate3d(-2px, 0, 0); }
@@ -101,7 +100,6 @@
             messagingSenderId: "76289812052",
             appId: "1:76289812052:web:898384a916f9f341f62fc1"
         };
-        // 專屬獨立資料庫名稱
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'english-vocabulary';
         
         const appDataRaw = document.getElementById('app-data').textContent;
@@ -137,28 +135,24 @@
         let chatMessages = [];
         let usersProfile = {}; 
         
-        // 英文單字相關資料庫快取
         let allVocab = {}; 
         let allProgress = {}; 
         let allActivities = {}; 
         let allFavorites = {}; 
-        let allWeakness = {}; // 錯題集中營
+        let allWeakness = {}; 
         
         let modalState = { date: '', level: '' };
         let currentYear = new Date().getFullYear();
         let currentMonth = new Date().getMonth(); 
         
-        // 學習模式分頁狀態
         let currentLearningBatch = []; // 每次改為 20 個
-        let currentPageIndex = 0;      // 0, 1 (每頁 10 個)
-        let isReviewMode = false;      // 是否為艾賓浩斯複習模式
+        let currentPageIndex = 0;      
+        let isReviewMode = false;      
 
-        // 測驗模式狀態
         let quizState = { questions: [], currentIndex: 0, correct: 0, wrongWords: [], level: '', mode: '' };
 
         let unsubUsers, unsubDates, unsubChat, unsubProfile, unsubVocab, unsubProgress, unsubActivity, unsubFav, unsubWeak;
         
-        // 女性/真人語音設定
         let femaleVoice = null;
 
         // ==========================================
@@ -199,7 +193,6 @@
             return str.replace(/'/g, "\\'").replace(/"/g, '&quot;');
         };
 
-        // 尋找最佳女性語音
         const initVoice = () => {
             if (!('speechSynthesis' in window)) return;
             const voices = speechSynthesis.getVoices();
@@ -218,511 +211,529 @@
         //  UI 渲染函式 - 系統框架與登入
         // ==========================================
         window.renderApp = () => { 
-            document.getElementById('app').innerHTML = `<div id="view-container" class="w-full h-full flex flex-col relative overflow-hidden bg-white/20"></div>`; 
-            renderGlobalModals();
+            try {
+                document.getElementById('app').innerHTML = `<div id="view-container" class="w-full h-full flex flex-col relative overflow-hidden bg-white/20"></div>`; 
+                renderGlobalModals();
+            } catch(e) { console.error("renderApp error", e); }
         };
 
         window.renderSetup = () => {
-            const container = document.getElementById('view-container');
-            const currentConfig = getStoredConfig() || {};
-            container.innerHTML = `
-                <div class="flex-1 flex flex-col items-center justify-center p-6 relative z-10 overflow-y-auto">
-                    <div class="glass-panel p-8 md:p-10 rounded-[2.5rem] shadow-2xl z-10 w-[36rem] max-w-[95vw] border-4 border-pink-300 relative overflow-hidden">
-                        <h1 class="text-2xl md:text-3xl font-black text-pink-600 mb-2 drop-shadow-sm text-center">⚙️ 系統資料庫設定</h1>
-                        <p class="text-sm text-gray-500 mb-6 text-center font-bold">請填入您的 Firebase API Key 以啟用雲端同步功能</p>
-                        <div class="space-y-3 bg-white/60 p-6 rounded-2xl border border-pink-200">
-                            <div>
-                                <label class="block text-xs font-bold text-pink-800 mb-1">API Key (必填) *</label>
-                                <input type="text" id="cfg-apiKey" value="${currentConfig.apiKey || ''}" placeholder="AIzaSy..." class="w-full px-3 py-2 rounded-lg border border-pink-200 focus:outline-none focus:border-pink-400 text-sm font-mono">
+            try {
+                const container = document.getElementById('view-container');
+                const currentConfig = getStoredConfig() || {};
+                container.innerHTML = `
+                    <div class="flex-1 flex flex-col items-center justify-center p-6 relative z-10 overflow-y-auto">
+                        <div class="glass-panel p-8 md:p-10 rounded-[2.5rem] shadow-2xl z-10 w-[36rem] max-w-[95vw] border-4 border-pink-300 relative overflow-hidden">
+                            <h1 class="text-2xl md:text-3xl font-black text-pink-600 mb-2 drop-shadow-sm text-center">⚙️ 系統資料庫設定</h1>
+                            <p class="text-sm text-gray-500 mb-6 text-center font-bold">請填入您的 Firebase API Key 以啟用雲端同步功能</p>
+                            <div class="space-y-3 bg-white/60 p-6 rounded-2xl border border-pink-200">
+                                <div>
+                                    <label class="block text-xs font-bold text-pink-800 mb-1">API Key (必填) *</label>
+                                    <input type="text" id="cfg-apiKey" value="${currentConfig.apiKey || ''}" placeholder="AIzaSy..." class="w-full px-3 py-2 rounded-lg border border-pink-200 focus:outline-none focus:border-pink-400 text-sm font-mono">
+                                </div>
+                            </div>
+                            <div class="mt-6 flex gap-3 justify-center">
+                                ${currentConfig.apiKey ? `<button onclick="renderLogin()" class="px-5 py-2.5 rounded-xl font-bold text-gray-500 bg-gray-50 border border-gray-200 hover:bg-gray-100 transition-colors">取消</button>` : ''}
+                                <button onclick="saveFirebaseConfig()" class="flex-1 bg-gradient-to-r from-pink-400 to-rose-400 text-white font-bold py-2.5 px-6 rounded-xl shadow-md hover:shadow-lg transition-all">
+                                    💾 儲存並啟動系統
+                                </button>
                             </div>
                         </div>
-                        <div class="mt-6 flex gap-3 justify-center">
-                            ${currentConfig.apiKey ? `<button onclick="renderLogin()" class="px-5 py-2.5 rounded-xl font-bold text-gray-500 bg-gray-50 border border-gray-200 hover:bg-gray-100 transition-colors">取消</button>` : ''}
-                            <button onclick="saveFirebaseConfig()" class="flex-1 bg-gradient-to-r from-pink-400 to-rose-400 text-white font-bold py-2.5 px-6 rounded-xl shadow-md hover:shadow-lg transition-all">
-                                💾 儲存並啟動系統
-                            </button>
-                        </div>
                     </div>
-                </div>
-            `;
+                `;
+            } catch(e) { console.error("renderSetup error", e); }
         };
 
         window.renderLogin = () => {
-            const container = document.getElementById('view-container');
-            container.innerHTML = `
-                <div class="flex-1 flex flex-col items-center justify-center p-6 relative z-10 overflow-y-auto">
-                    <div class="glass-panel p-8 md:p-12 rounded-[2.5rem] shadow-2xl z-10 w-[36rem] max-w-[95vw] text-center border-4 border-pink-300 relative overflow-hidden">
-                        <div class="absolute top-4 left-4 text-4xl animate-bounce-slow">🌸</div>
-                        <div class="absolute bottom-4 right-4 text-4xl animate-bounce-slow" style="animation-delay: 1s;">📖</div>
-                        <button onclick="renderSetup()" class="absolute top-5 right-5 text-pink-300 hover:text-pink-600 transition-colors bg-white/50 p-2 rounded-full border border-pink-200 hover:bg-white" title="系統設定">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                        </button>
+            try {
+                const container = document.getElementById('view-container');
+                container.innerHTML = `
+                    <div class="flex-1 flex flex-col items-center justify-center p-6 relative z-10 overflow-y-auto">
+                        <div class="glass-panel p-8 md:p-12 rounded-[2.5rem] shadow-2xl z-10 w-[36rem] max-w-[95vw] text-center border-4 border-pink-300 relative overflow-hidden">
+                            <div class="absolute top-4 left-4 text-4xl animate-bounce-slow">🌸</div>
+                            <div class="absolute bottom-4 right-4 text-4xl animate-bounce-slow" style="animation-delay: 1s;">📖</div>
+                            <button onclick="renderSetup()" class="absolute top-5 right-5 text-pink-300 hover:text-pink-600 transition-colors bg-white/50 p-2 rounded-full border border-pink-200 hover:bg-white" title="系統設定">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                            </button>
 
-                        <h1 class="text-3xl md:text-4xl font-black text-pink-600 mb-3 drop-shadow-sm tracking-wide">🌸 櫻花單字特訓班</h1>
-                        <h2 class="text-xl font-bold text-rose-500 mb-8 bg-rose-50 inline-block px-6 py-2 rounded-full border border-rose-200 shadow-sm">Level 1 - 6 單字攻克 💯</h2>
-                        
-                        <div class="bg-white/60 p-6 rounded-3xl border border-pink-200 mb-6 shadow-inner">
-                            <p class="text-sm text-pink-600 font-bold mb-3">👇 點擊你的暱稱登入 👇</p>
-                            <div class="flex flex-wrap justify-center gap-3">
-                                ${globalUsers.length > 0 ? 
-                                    globalUsers.map(u => {
-                                        const dispName = usersProfile[u]?.nickname || u;
-                                        return `<button onclick="initiateLogin('${u}')" class="flex items-center gap-2 text-md font-bold bg-white border-2 border-pink-200 text-pink-700 hover:bg-pink-50 hover:scale-105 py-1.5 pl-2 pr-4 rounded-xl shadow-sm transition-all">
-                                            <div class="${getUserColor(u)} w-8 h-8 rounded-full flex items-center justify-center text-sm font-black shadow-sm border-2 border-white shrink-0">${getAvatarChar(u)}</div>
-                                            <span>${dispName}</span>
-                                        </button>`;
-                                    }).join('') 
-                                    : `<span class="text-sm text-gray-400">尚無學習者，請點擊下方註冊</span>`
-                                }
+                            <h1 class="text-3xl md:text-4xl font-black text-pink-600 mb-3 drop-shadow-sm tracking-wide">🌸 櫻花單字特訓班</h1>
+                            <h2 class="text-xl font-bold text-rose-500 mb-8 bg-rose-50 inline-block px-6 py-2 rounded-full border border-rose-200 shadow-sm">Level 1 - 6 單字攻克 💯</h2>
+                            
+                            <div class="bg-white/60 p-6 rounded-3xl border border-pink-200 mb-6 shadow-inner">
+                                <p class="text-sm text-pink-600 font-bold mb-3">👇 點擊你的暱稱登入 👇</p>
+                                <div class="flex flex-wrap justify-center gap-3">
+                                    ${globalUsers.length > 0 ? 
+                                        globalUsers.map(u => {
+                                            const dispName = usersProfile[u]?.nickname || u;
+                                            return `<button onclick="initiateLogin('${u}')" class="flex items-center gap-2 text-md font-bold bg-white border-2 border-pink-200 text-pink-700 hover:bg-pink-50 hover:scale-105 py-1.5 pl-2 pr-4 rounded-xl shadow-sm transition-all">
+                                                <div class="${getUserColor(u)} w-8 h-8 rounded-full flex items-center justify-center text-sm font-black shadow-sm border-2 border-white shrink-0">${getAvatarChar(u)}</div>
+                                                <span>${dispName}</span>
+                                            </button>`;
+                                        }).join('') 
+                                        : `<span class="text-sm text-gray-400">尚無學習者，請點擊下方註冊</span>`
+                                    }
+                                </div>
+                            </div>
+                            
+                            <div class="flex gap-2 w-full mt-2">
+                                <button onclick="openProfileEditModal('', true)" class="w-full bg-gradient-to-r from-pink-400 to-rose-400 text-white font-black py-4 px-6 text-xl rounded-2xl shadow-md hover:shadow-lg transition-all transform hover:scale-[1.02]">
+                                    🚀 註冊新帳號
+                                </button>
                             </div>
                         </div>
-                        
-                        <div class="flex gap-2 w-full mt-2">
-                            <button onclick="openProfileEditModal('', true)" class="w-full bg-gradient-to-r from-pink-400 to-rose-400 text-white font-black py-4 px-6 text-xl rounded-2xl shadow-md hover:shadow-lg transition-all transform hover:scale-[1.02]">
-                                🚀 註冊新帳號
-                            </button>
-                        </div>
                     </div>
-                </div>
-            `;
+                `;
+            } catch(e) { console.error("renderLogin error", e); }
         };
 
         window.renderMain = () => {
-            const container = document.getElementById('view-container');
-            container.innerHTML = `
-                <div class="bg-white/80 backdrop-blur-md border-b-2 border-pink-200 p-3 flex justify-between items-center shadow-sm shrink-0 z-20 relative">
-                    <div class="flex items-center gap-4 pl-2">
-                        <h1 class="text-2xl md:text-3xl font-black text-pink-600 tracking-wider">🌸 櫻花單字特訓班</h1>
-                    </div>
-                    <div class="flex items-center gap-2 md:gap-3 pr-2 flex-wrap justify-end">
-                        ${isAdmin ? `<button onclick="window.open('migration_tool.html', '_blank')" class="bg-gradient-to-r from-amber-400 to-orange-400 text-white font-bold px-3 py-1.5 rounded-lg shadow-sm hover:scale-105 transition-transform text-sm shrink-0 hidden lg:block">⚙️ 題庫管理</button>` : ''}
-                        
-                        <button onclick="openWeaknessCamp()" class="font-bold text-red-600 bg-red-50 px-2 md:px-3 py-1.5 rounded-lg border border-red-200 shadow-sm hover:bg-red-100 transition-colors text-sm flex items-center gap-1 shrink-0">
-                            🔥 <span class="hidden md:inline">錯題集中營</span>
-                        </button>
-
-                        <button onclick="openProgressModal()" class="font-bold text-rose-600 bg-rose-50 px-2 md:px-3 py-1.5 rounded-lg border border-rose-200 shadow-sm hover:bg-rose-100 transition-colors text-sm flex items-center gap-1 shrink-0">
-                            📈 <span class="hidden md:inline">進度追蹤</span>
-                        </button>
-                        
-                        <button onclick="openProfileEditModal('${username}')" class="font-bold text-pink-600 bg-pink-50 px-2 md:px-3 py-1.5 rounded-lg border border-pink-200 shadow-sm hover:bg-pink-100 transition-colors text-sm flex items-center gap-1 shrink-0">
-                            <div class="${getUserColor(username)} w-5 h-5 rounded-full flex items-center justify-center text-[10px] shadow-sm">${getAvatarChar(username)}</div>
-                            <span class="hidden md:inline">我的資料卡</span>
-                        </button>
-                        
-                        <button onclick="logout()" class="text-gray-500 hover:bg-gray-100 font-bold px-2 md:px-3 py-1.5 rounded-lg transition-colors text-sm border border-gray-200 bg-white shadow-sm shrink-0">登出 👋</button>
-                    </div>
-                </div>
-
-                <div class="flex-1 flex flex-col md:flex-row overflow-hidden">
-                    <div class="w-full md:w-60 lg:w-72 flex flex-col bg-white/50 border-b-2 md:border-b-0 md:border-r-2 border-pink-100 z-10 shrink-0 h-full min-h-0">
-                        <div id="sidebar-countdowns" class="p-4 flex flex-col border-b-2 border-pink-100 shrink-0 h-[45%] min-h-[250px] relative overflow-hidden"></div>
-                        <div class="flex-1 flex flex-col bg-white/60 overflow-hidden relative min-h-0">
-                            <div class="bg-pink-100/50 p-2 text-center font-bold text-pink-600 border-b border-pink-100 text-sm shadow-sm shrink-0">💬 加油打氣留言板</div>
-                            <div id="chat-messages" class="flex-1 overflow-y-auto p-3 space-y-3 custom-scrollbar text-sm relative min-h-0"></div>
+            try {
+                const container = document.getElementById('view-container');
+                container.innerHTML = `
+                    <div class="bg-white/80 backdrop-blur-md border-b-2 border-pink-200 p-3 flex justify-between items-center shadow-sm shrink-0 z-20 relative">
+                        <div class="flex items-center gap-4 pl-2">
+                            <h1 class="text-2xl md:text-3xl font-black text-pink-600 tracking-wider">🌸 櫻花單字特訓班</h1>
+                        </div>
+                        <div class="flex items-center gap-2 md:gap-3 pr-2 flex-wrap justify-end">
+                            ${isAdmin ? `<button onclick="window.open('migration_tool.html', '_blank')" class="bg-gradient-to-r from-amber-400 to-orange-400 text-white font-bold px-3 py-1.5 rounded-lg shadow-sm hover:scale-105 transition-transform text-sm shrink-0 hidden lg:block">⚙️ 題庫管理</button>` : ''}
                             
-                            <div class="p-2 bg-white flex flex-col border-t border-pink-100 relative shrink-0">
-                                <div id="emoji-picker" class="hidden absolute bottom-full left-2 mb-2 bg-white border border-pink-200 p-2 rounded-xl shadow-lg grid grid-cols-5 gap-2 z-50">
-                                    ${['😀','😂','🥰','😎','🥺','💪','🔥','💯','📚','🎓','🌸','🎉','📝','🏆','💖'].map(e => `<button onclick="insertEmoji('${e}')" class="text-xl hover:scale-125 transition-transform">${e}</button>`).join('')}
-                                </div>
-                                <div class="flex gap-1.5 items-center w-full">
-                                    <button id="emoji-toggle-btn" onclick="toggleEmojiPicker(event)" class="text-2xl hover:bg-pink-50 px-1 rounded-lg transition-colors shrink-0">😀</button>
-                                    <div class="flex-1 min-w-0">
-                                        <input type="text" id="chatInput" placeholder="說點什麼..." class="w-full px-3 py-2 rounded-lg border border-pink-200 focus:outline-none focus:border-pink-400 bg-pink-50 text-sm" onkeypress="if(event.key === 'Enter') sendChat()">
+                            <button onclick="openWeaknessCamp()" class="font-bold text-red-600 bg-red-50 px-2 md:px-3 py-1.5 rounded-lg border border-red-200 shadow-sm hover:bg-red-100 transition-colors text-sm flex items-center gap-1 shrink-0">
+                                🔥 <span class="hidden md:inline">錯題集中營</span>
+                            </button>
+
+                            <button onclick="openProgressModal()" class="font-bold text-rose-600 bg-rose-50 px-2 md:px-3 py-1.5 rounded-lg border border-rose-200 shadow-sm hover:bg-rose-100 transition-colors text-sm flex items-center gap-1 shrink-0">
+                                📈 <span class="hidden md:inline">進度追蹤</span>
+                            </button>
+                            
+                            <button onclick="openProfileEditModal('${username}')" class="font-bold text-pink-600 bg-pink-50 px-2 md:px-3 py-1.5 rounded-lg border border-pink-200 shadow-sm hover:bg-pink-100 transition-colors text-sm flex items-center gap-1 shrink-0">
+                                <div class="${getUserColor(username)} w-5 h-5 rounded-full flex items-center justify-center text-[10px] shadow-sm">${getAvatarChar(username)}</div>
+                                <span class="hidden md:inline">我的資料卡</span>
+                            </button>
+                            
+                            <button onclick="logout()" class="text-gray-500 hover:bg-gray-100 font-bold px-2 md:px-3 py-1.5 rounded-lg transition-colors text-sm border border-gray-200 bg-white shadow-sm shrink-0">登出 👋</button>
+                        </div>
+                    </div>
+
+                    <div class="flex-1 flex flex-col md:flex-row overflow-hidden">
+                        <div class="w-full md:w-60 lg:w-72 flex flex-col bg-white/50 border-b-2 md:border-b-0 md:border-r-2 border-pink-100 z-10 shrink-0 h-full min-h-0">
+                            <div id="sidebar-countdowns" class="p-4 flex flex-col border-b-2 border-pink-100 shrink-0 h-[45%] min-h-[250px] relative overflow-hidden"></div>
+                            <div class="flex-1 flex flex-col bg-white/60 overflow-hidden relative min-h-0">
+                                <div class="bg-pink-100/50 p-2 text-center font-bold text-pink-600 border-b border-pink-100 text-sm shadow-sm shrink-0">💬 加油打氣留言板</div>
+                                <div id="chat-messages" class="flex-1 overflow-y-auto p-3 space-y-3 custom-scrollbar text-sm relative min-h-0"></div>
+                                
+                                <div class="p-2 bg-white flex flex-col border-t border-pink-100 relative shrink-0">
+                                    <div id="emoji-picker" class="hidden absolute bottom-full left-2 mb-2 bg-white border border-pink-200 p-2 rounded-xl shadow-lg grid grid-cols-5 gap-2 z-50">
+                                        ${['😀','😂','🥰','😎','🥺','💪','🔥','💯','📚','🎓','🌸','🎉','📝','🏆','💖'].map(e => `<button onclick="insertEmoji('${e}')" class="text-xl hover:scale-125 transition-transform">${e}</button>`).join('')}
                                     </div>
-                                    <button onclick="sendChat()" class="bg-pink-400 text-white px-3 py-2 rounded-lg font-bold hover:bg-pink-500 transition-colors shrink-0 whitespace-nowrap text-sm">送出</button>
+                                    <div class="flex gap-1.5 items-center w-full">
+                                        <button id="emoji-toggle-btn" onclick="toggleEmojiPicker(event)" class="text-2xl hover:bg-pink-50 px-1 rounded-lg transition-colors shrink-0">😀</button>
+                                        <div class="flex-1 min-w-0">
+                                            <input type="text" id="chatInput" placeholder="說點什麼..." class="w-full px-3 py-2 rounded-lg border border-pink-200 focus:outline-none focus:border-pink-400 bg-pink-50 text-sm" onkeypress="if(event.key === 'Enter') sendChat()">
+                                        </div>
+                                        <button onclick="sendChat()" class="bg-pink-400 text-white px-3 py-2 rounded-lg font-bold hover:bg-pink-500 transition-colors shrink-0 whitespace-nowrap text-sm">送出</button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
 
-                    <div class="flex-1 bg-white/30 p-4 flex flex-col relative z-0 min-w-0">
-                        <div class="flex justify-between items-center mb-4 bg-white/80 p-3 rounded-2xl border border-pink-100 shadow-sm shrink-0">
-                            <button onclick="changeMonth(-1)" class="px-3 py-1.5 md:px-4 md:py-2 bg-pink-50 border border-pink-200 hover:bg-pink-100 text-pink-600 rounded-xl font-bold transition-colors shadow-sm text-sm md:text-base whitespace-nowrap">◀ 上個月</button>
-                            <div class="flex flex-col items-center flex-1 mx-2 overflow-hidden" id="calendar-header-container"></div>
-                            <button onclick="changeMonth(1)" class="px-3 py-1.5 md:px-4 md:py-2 bg-pink-50 border border-pink-200 hover:bg-pink-100 text-pink-600 rounded-xl font-bold transition-colors shadow-sm text-sm md:text-base whitespace-nowrap">下個月 ▶</button>
+                        <div class="flex-1 bg-white/30 p-4 flex flex-col relative z-0 min-w-0">
+                            <div class="flex justify-between items-center mb-4 bg-white/80 p-3 rounded-2xl border border-pink-100 shadow-sm shrink-0">
+                                <button onclick="changeMonth(-1)" class="px-3 py-1.5 md:px-4 md:py-2 bg-pink-50 border border-pink-200 hover:bg-pink-100 text-pink-600 rounded-xl font-bold transition-colors shadow-sm text-sm md:text-base whitespace-nowrap">◀ 上個月</button>
+                                <div class="flex flex-col items-center flex-1 mx-2 overflow-hidden" id="calendar-header-container"></div>
+                                <button onclick="changeMonth(1)" class="px-3 py-1.5 md:px-4 md:py-2 bg-pink-50 border border-pink-200 hover:bg-pink-100 text-pink-600 rounded-xl font-bold transition-colors shadow-sm text-sm md:text-base whitespace-nowrap">下個月 ▶</button>
+                            </div>
+                            <div id="calendar-grid" class="flex-1 flex flex-col min-h-0"></div>
                         </div>
-                        <div id="calendar-grid" class="flex-1 flex flex-col min-h-0"></div>
-                    </div>
 
-                    <div class="w-full md:w-60 lg:w-72 flex flex-col bg-white/60 z-10 shrink-0 border-l-2 border-pink-200 min-h-0 h-full shadow-[-4px_0_15px_rgba(244,114,182,0.05)]">
-                        <div class="bg-gradient-to-r from-pink-200 to-rose-200 p-2 text-center font-bold text-rose-700 shadow-sm shrink-0 text-sm flex justify-center items-center gap-1">❤️ 我的最愛單字</div>
-                        <div id="favorites-feed" class="flex-1 overflow-y-auto p-3 space-y-3 custom-scrollbar"></div>
+                        <div class="w-full md:w-60 lg:w-72 flex flex-col bg-white/60 z-10 shrink-0 border-l-2 border-pink-200 min-h-0 h-full shadow-[-4px_0_15px_rgba(244,114,182,0.05)]">
+                            <div class="bg-gradient-to-r from-pink-200 to-rose-200 p-2 text-center font-bold text-rose-700 shadow-sm shrink-0 text-sm flex justify-center items-center gap-1">❤️ 我的最愛單字</div>
+                            <div id="favorites-feed" class="flex-1 overflow-y-auto p-3 space-y-3 custom-scrollbar"></div>
+                        </div>
                     </div>
-                </div>
-            `;
-            if (username) {
-                window.renderSidebar();
-                window.renderMainContent();
-                window.renderChat();
-            }
+                `;
+                if (username) {
+                    window.renderSidebar();
+                    window.renderMainContent();
+                    window.renderChat();
+                }
+            } catch(e) { console.error("renderMain error", e); }
         };
 
         // 全域 Modals 渲染
         const renderGlobalModals = () => {
-            const container = document.getElementById('modals-container');
-            container.innerHTML = `
-                <!-- 輸入密碼登入 Modal -->
-                <div id="login-pwd-modal" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm hidden items-center justify-center z-[70] p-4 transition-opacity duration-200 opacity-0">
-                    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden border-4 border-pink-300 transform scale-95 transition-transform duration-200 flex flex-col p-6">
-                        <h2 class="text-2xl font-black text-pink-600 mb-4 text-center">🔐 安全登入</h2>
-                        <p class="text-center font-bold text-gray-600 mb-4" id="login-pwd-username-display"></p>
-                        <input type="hidden" id="login-pwd-username">
-                        <input type="password" id="login-pwd-input" placeholder="請輸入密碼" class="w-full px-4 py-3 rounded-xl border-2 border-pink-200 focus:outline-none focus:border-pink-400 text-center font-bold text-lg mb-6" onkeypress="if(event.key === 'Enter') confirmLoginPassword()">
-                        <div class="flex gap-3">
-                            <button onclick="closeGlobalModal('login-pwd-modal')" class="flex-1 px-4 py-2.5 rounded-xl font-bold text-gray-500 bg-gray-50 border border-gray-200 hover:bg-gray-100">取消</button>
-                            <button onclick="confirmLoginPassword()" class="flex-1 px-4 py-2.5 rounded-xl font-bold text-white bg-pink-500 hover:bg-pink-600 shadow-md">登入</button>
+            try {
+                const container = document.getElementById('modals-container');
+                container.innerHTML = `
+                    <!-- 輸入密碼登入 Modal -->
+                    <div id="login-pwd-modal" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm hidden items-center justify-center z-[70] p-4 transition-opacity duration-200 opacity-0">
+                        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden border-4 border-pink-300 transform scale-95 transition-transform duration-200 flex flex-col p-6">
+                            <h2 class="text-2xl font-black text-pink-600 mb-4 text-center">🔐 安全登入</h2>
+                            <p class="text-center font-bold text-gray-600 mb-4" id="login-pwd-username-display"></p>
+                            <input type="hidden" id="login-pwd-username">
+                            <input type="password" id="login-pwd-input" placeholder="請輸入密碼" class="w-full px-4 py-3 rounded-xl border-2 border-pink-200 focus:outline-none focus:border-pink-400 text-center font-bold text-lg mb-6" onkeypress="if(event.key === 'Enter') confirmLoginPassword()">
+                            <div class="flex gap-3">
+                                <button onclick="closeGlobalModal('login-pwd-modal')" class="flex-1 px-4 py-2.5 rounded-xl font-bold text-gray-500 bg-gray-50 border border-gray-200 hover:bg-gray-100">取消</button>
+                                <button onclick="confirmLoginPassword()" class="flex-1 px-4 py-2.5 rounded-xl font-bold text-white bg-pink-500 hover:bg-pink-600 shadow-md">登入</button>
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- 註冊/編輯個人資料卡 Modal -->
-                <div id="profile-edit-modal" class="fixed inset-0 bg-gray-900/70 backdrop-blur-sm hidden items-center justify-center z-[80] p-4 transition-opacity duration-200 opacity-0">
-                    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden border-4 border-pink-300 transform scale-95 transition-transform duration-200 flex flex-col" style="max-height: 95vh;">
-                        <div class="bg-gradient-to-r from-pink-400 to-rose-400 p-4 flex justify-between items-center text-white shrink-0">
-                            <h2 class="text-xl font-bold" id="profile-modal-title">📝 設定專屬資料卡</h2>
-                            <button onclick="closeGlobalModal('profile-edit-modal')" id="profile-modal-close" class="hover:bg-white/20 rounded-full w-8 h-8 flex items-center justify-center font-bold">✕</button>
-                        </div>
-                        <div class="p-6 overflow-y-auto flex-1 custom-scrollbar space-y-4 bg-pink-50/30">
-                            <div>
-                                <label class="block text-pink-800 font-bold mb-1 text-sm">真實姓名 (登入帳號) <span class="text-red-500">*</span></label>
-                                <input type="text" id="prof-name" placeholder="請輸入真實姓名" class="w-full px-3 py-2 rounded-lg border-2 border-pink-200 bg-white focus:outline-none focus:border-pink-400 font-bold text-gray-700">
+                    <!-- 註冊/編輯個人資料卡 Modal -->
+                    <div id="profile-edit-modal" class="fixed inset-0 bg-gray-900/70 backdrop-blur-sm hidden items-center justify-center z-[80] p-4 transition-opacity duration-200 opacity-0">
+                        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden border-4 border-pink-300 transform scale-95 transition-transform duration-200 flex flex-col" style="max-height: 95vh;">
+                            <div class="bg-gradient-to-r from-pink-400 to-rose-400 p-4 flex justify-between items-center text-white shrink-0">
+                                <h2 class="text-xl font-bold" id="profile-modal-title">📝 設定專屬資料卡</h2>
+                                <button onclick="closeGlobalModal('profile-edit-modal')" id="profile-modal-close" class="hover:bg-white/20 rounded-full w-8 h-8 flex items-center justify-center font-bold">✕</button>
                             </div>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="p-6 overflow-y-auto flex-1 custom-scrollbar space-y-4 bg-pink-50/30">
                                 <div>
-                                    <label class="block text-pink-800 font-bold mb-1 text-sm">設定密碼 (必填) <span class="text-xs font-normal text-red-400" id="pwd-hint"></span> <span class="text-red-500">*</span></label>
-                                    <input type="password" id="prof-pwd" placeholder="請設定登入密碼" class="w-full px-3 py-2 rounded-lg border-2 border-pink-200 bg-white focus:outline-none focus:border-pink-400">
+                                    <label class="block text-pink-800 font-bold mb-1 text-sm">真實姓名 (登入帳號) <span class="text-red-500">*</span></label>
+                                    <input type="text" id="prof-name" placeholder="請輸入真實姓名" class="w-full px-3 py-2 rounded-lg border-2 border-pink-200 bg-white focus:outline-none focus:border-pink-400 font-bold text-gray-700">
+                                </div>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-pink-800 font-bold mb-1 text-sm">設定密碼 (必填) <span class="text-xs font-normal text-red-400" id="pwd-hint"></span> <span class="text-red-500">*</span></label>
+                                        <input type="password" id="prof-pwd" placeholder="請設定登入密碼" class="w-full px-3 py-2 rounded-lg border-2 border-pink-200 bg-white focus:outline-none focus:border-pink-400">
+                                    </div>
+                                    <div>
+                                        <label class="block text-pink-800 font-bold mb-1 text-sm">確認密碼 (必填) <span class="text-red-500">*</span></label>
+                                        <input type="password" id="prof-pwd-confirm" placeholder="請再次輸入密碼" class="w-full px-3 py-2 rounded-lg border-2 border-pink-200 bg-white focus:outline-none focus:border-pink-400">
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-pink-800 font-bold mb-1 text-sm">顯示暱稱 (必填) <span class="text-red-500">*</span></label>
+                                        <input type="text" id="prof-nickname" placeholder="例如: 小明" class="w-full px-3 py-2 rounded-lg border-2 border-pink-200 bg-white focus:outline-none focus:border-pink-400">
+                                    </div>
+                                    <div>
+                                        <label class="block text-pink-800 font-bold mb-1 text-sm">生日 (選填)</label>
+                                        <input type="date" id="prof-birthday" class="w-full px-3 py-2 rounded-lg border-2 border-pink-200 bg-white focus:outline-none focus:border-pink-400">
+                                    </div>
                                 </div>
                                 <div>
-                                    <label class="block text-pink-800 font-bold mb-1 text-sm">確認密碼 (必填) <span class="text-red-500">*</span></label>
-                                    <input type="password" id="prof-pwd-confirm" placeholder="請再次輸入密碼" class="w-full px-3 py-2 rounded-lg border-2 border-pink-200 bg-white focus:outline-none focus:border-pink-400">
-                                </div>
-                            </div>
-                            <div class="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label class="block text-pink-800 font-bold mb-1 text-sm">顯示暱稱 (必填) <span class="text-red-500">*</span></label>
-                                    <input type="text" id="prof-nickname" placeholder="例如: 小明" class="w-full px-3 py-2 rounded-lg border-2 border-pink-200 bg-white focus:outline-none focus:border-pink-400">
+                                    <label class="block text-pink-800 font-bold mb-1 text-sm">第一志願 / 目標 (選填)</label>
+                                    <input type="text" id="prof-target" placeholder="例如: 多益 900 分..." class="w-full px-3 py-2 rounded-lg border-2 border-pink-200 bg-white focus:outline-none focus:border-pink-400">
                                 </div>
                                 <div>
-                                    <label class="block text-pink-800 font-bold mb-1 text-sm">生日 (選填)</label>
-                                    <input type="date" id="prof-birthday" class="w-full px-3 py-2 rounded-lg border-2 border-pink-200 bg-white focus:outline-none focus:border-pink-400">
+                                    <label class="block text-pink-800 font-bold mb-1 text-sm">座右銘 (選填)</label>
+                                    <input type="text" id="prof-motto" placeholder="一句鼓勵自己的話！" class="w-full px-3 py-2 rounded-lg border-2 border-pink-200 bg-white focus:outline-none focus:border-pink-400">
+                                </div>
+                                <div>
+                                    <label class="block text-pink-800 font-bold mb-1 text-sm">大頭貼照片 (選填)</label>
+                                    <div class="border-2 border-dashed border-pink-300 rounded-xl p-3 text-center bg-white hover:bg-pink-50 transition-colors cursor-pointer" onclick="document.getElementById('prof-photo-upload').click()">
+                                        <input type="file" id="prof-photo-upload" accept="image/*" class="hidden" onchange="handleProfilePhoto(event)">
+                                        <img id="prof-photo-preview" class="h-20 w-20 object-cover rounded-full mx-auto hidden shadow-sm border-2 border-pink-200 mb-2">
+                                        <div id="prof-photo-placeholder" class="text-pink-500 text-sm font-bold">點擊上傳大頭貼 📷</div>
+                                    </div>
                                 </div>
                             </div>
-                            <div>
-                                <label class="block text-pink-800 font-bold mb-1 text-sm">第一志願 / 目標 (選填)</label>
-                                <input type="text" id="prof-target" placeholder="例如: 多益 900 分..." class="w-full px-3 py-2 rounded-lg border-2 border-pink-200 bg-white focus:outline-none focus:border-pink-400">
+                            <div class="p-4 bg-white border-t border-pink-100 flex justify-end shrink-0">
+                                <button onclick="saveProfile()" class="px-6 py-2.5 rounded-xl font-bold text-white bg-pink-500 hover:bg-pink-600 shadow-md w-full md:w-auto">儲存並進入 🚀</button>
                             </div>
-                            <div>
-                                <label class="block text-pink-800 font-bold mb-1 text-sm">座右銘 (選填)</label>
-                                <input type="text" id="prof-motto" placeholder="一句鼓勵自己的話！" class="w-full px-3 py-2 rounded-lg border-2 border-pink-200 bg-white focus:outline-none focus:border-pink-400">
+                        </div>
+                    </div>
+
+                    <!-- 選擇單字等級 Modal -->
+                    <div id="level-select-modal" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm hidden items-center justify-center z-[70] p-4 transition-opacity duration-200 opacity-0" onclick="if(event.target === this) closeGlobalModal('level-select-modal')">
+                        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden border-4 border-pink-300 transform scale-95 transition-transform duration-200 flex flex-col p-6 relative">
+                            <div class="absolute top-4 left-4 text-3xl opacity-20 pointer-events-none">🌸</div>
+                            <div class="absolute top-4 right-4 text-3xl opacity-20 pointer-events-none">✨</div>
+                            
+                            <h2 class="text-2xl font-black text-pink-600 mb-2 text-center mt-2">請選擇難度</h2>
+                            <p class="text-center font-bold text-gray-500 mb-4 text-sm">系統將自動接續您的學習進度！<br><span id="level-modal-date" class="text-xs text-pink-500 bg-pink-50 px-2 py-0.5 rounded mt-2 inline-block shadow-sm"></span></p>
+                            
+                            <div class="grid grid-cols-2 gap-3 mb-4" id="level-buttons-container">
+                                <!-- JS 動態填入 -->
                             </div>
-                            <div>
-                                <label class="block text-pink-800 font-bold mb-1 text-sm">大頭貼照片 (選填)</label>
-                                <div class="border-2 border-dashed border-pink-300 rounded-xl p-3 text-center bg-white hover:bg-pink-50 transition-colors cursor-pointer" onclick="document.getElementById('prof-photo-upload').click()">
-                                    <input type="file" id="prof-photo-upload" accept="image/*" class="hidden" onchange="handleProfilePhoto(event)">
-                                    <img id="prof-photo-preview" class="h-20 w-20 object-cover rounded-full mx-auto hidden shadow-sm border-2 border-pink-200 mb-2">
-                                    <div id="prof-photo-placeholder" class="text-pink-500 text-sm font-bold">點擊上傳大頭貼 📷</div>
+                            
+                            <div id="level-actions-container" class="flex flex-col gap-2 mt-4 pt-4 border-t border-gray-100 hidden">
+                                <!-- JS 動態填入複習/測驗按鈕 -->
+                            </div>
+
+                            <button onclick="closeGlobalModal('level-select-modal')" class="mt-4 w-full py-2.5 rounded-xl font-bold text-gray-500 bg-gray-50 border border-gray-200 hover:bg-gray-100">取消</button>
+                        </div>
+                    </div>
+
+                    <!-- 單字學習 列表 Modal (加寬, 一次 10 題) -->
+                    <div id="learning-modal" class="fixed inset-0 bg-gray-900/80 backdrop-blur-sm hidden items-center justify-center z-[80] p-4 transition-opacity duration-200 opacity-0">
+                        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-[95vw] lg:max-w-6xl overflow-hidden border-4 border-pink-300 transform scale-95 transition-transform duration-200 flex flex-col h-[90vh]">
+                            <div class="bg-gradient-to-r from-pink-400 to-rose-400 p-4 flex justify-between items-center text-white shrink-0">
+                                <h2 class="text-xl font-bold flex items-center gap-2">📖 單字特訓 <span id="learning-modal-title-badge" class="bg-white/30 px-2 py-0.5 rounded text-sm shadow-sm"></span></h2>
+                                <button onclick="closeGlobalModal('learning-modal')" class="hover:bg-white/30 rounded-full w-8 h-8 flex items-center justify-center font-bold text-xl transition-colors">✕</button>
+                            </div>
+                            <div class="p-4 md:p-6 overflow-y-auto flex-1 custom-scrollbar bg-pink-50/30" id="learning-content">
+                                <!-- 單字列表動態注入 -->
+                            </div>
+                            <div class="p-4 bg-white border-t border-pink-100 flex justify-between items-center shrink-0">
+                                <button onclick="prevPage()" id="btn-prev-page" class="px-5 py-2.5 rounded-xl font-bold text-pink-600 bg-pink-50 hover:bg-pink-100 border border-pink-200 transition-all invisible">◀ 上一頁</button>
+                                <span id="learning-page-indicator" class="font-bold text-gray-500 text-sm bg-gray-100 px-3 py-1 rounded-full"></span>
+                                <button onclick="nextPage()" id="btn-next-page" class="px-6 py-2.5 rounded-xl font-black text-white bg-pink-500 hover:bg-pink-600 shadow-md transition-all">下一頁 ▶</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 測驗模式 Quiz Modal -->
+                    <div id="quiz-modal" class="fixed inset-0 bg-gray-900/80 backdrop-blur-sm hidden items-center justify-center z-[90] p-4 transition-opacity duration-200 opacity-0" style="perspective: 1000px;">
+                        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-[95vw] lg:max-w-6xl overflow-hidden border-4 border-rose-300 transform scale-95 transition-transform duration-200 flex flex-col min-h-[85vh]">
+                            <div class="bg-gradient-to-r from-rose-400 to-pink-500 p-4 flex justify-between items-center text-white shrink-0">
+                                <h2 class="text-xl font-bold flex items-center gap-2">📝 實戰測驗 <span id="quiz-progress-badge" class="bg-white/30 px-2 py-0.5 rounded text-sm shadow-sm"></span></h2>
+                                <button onclick="closeGlobalModal('quiz-modal')" class="hover:bg-white/30 rounded-full w-8 h-8 flex items-center justify-center font-bold text-xl transition-colors">✕</button>
+                            </div>
+                            
+                            <!-- Progress Bar -->
+                            <div class="w-full bg-gray-100 h-2">
+                                <div id="quiz-progress-bar" class="bg-rose-400 h-2 transition-all duration-300" style="width: 0%"></div>
+                            </div>
+
+                            <div class="p-6 md:p-10 flex-1 flex flex-col items-center justify-center bg-rose-50/20 relative overflow-y-auto custom-scrollbar">
+                                <div id="quiz-question-container" class="text-center w-full max-w-4xl mx-auto flex flex-col justify-center flex-1">
+                                    <!-- JS 動態注入題目與選項 -->
                                 </div>
                             </div>
                         </div>
-                        <div class="p-4 bg-white border-t border-pink-100 flex justify-end shrink-0">
-                            <button onclick="saveProfile()" class="px-6 py-2.5 rounded-xl font-bold text-white bg-pink-500 hover:bg-pink-600 shadow-md w-full md:w-auto">儲存並進入 🚀</button>
-                        </div>
                     </div>
-                </div>
 
-                <!-- 選擇單字等級 Modal -->
-                <div id="level-select-modal" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm hidden items-center justify-center z-[70] p-4 transition-opacity duration-200 opacity-0" onclick="if(event.target === this) closeGlobalModal('level-select-modal')">
-                    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden border-4 border-pink-300 transform scale-95 transition-transform duration-200 flex flex-col p-6 relative">
-                        <div class="absolute top-4 left-4 text-3xl opacity-20 pointer-events-none">🌸</div>
-                        <div class="absolute top-4 right-4 text-3xl opacity-20 pointer-events-none">✨</div>
-                        
-                        <h2 class="text-2xl font-black text-pink-600 mb-2 text-center mt-2">請選擇難度</h2>
-                        <p class="text-center font-bold text-gray-500 mb-4 text-sm">系統將自動接續您的學習進度！<br><span id="level-modal-date" class="text-xs text-pink-500 bg-pink-50 px-2 py-0.5 rounded mt-2 inline-block shadow-sm"></span></p>
-                        
-                        <div class="grid grid-cols-2 gap-3 mb-4" id="level-buttons-container">
-                            <!-- JS 動態填入 -->
-                        </div>
-                        
-                        <div id="level-actions-container" class="flex flex-col gap-2 mt-4 pt-4 border-t border-gray-100 hidden">
-                            <!-- JS 動態填入複習/測驗按鈕 -->
-                        </div>
-
-                        <button onclick="closeGlobalModal('level-select-modal')" class="mt-4 w-full py-2.5 rounded-xl font-bold text-gray-500 bg-gray-50 border border-gray-200 hover:bg-gray-100">取消</button>
-                    </div>
-                </div>
-
-                <!-- 單字學習 列表 Modal (加寬, 一次 10 題) -->
-                <div id="learning-modal" class="fixed inset-0 bg-gray-900/80 backdrop-blur-sm hidden items-center justify-center z-[80] p-4 transition-opacity duration-200 opacity-0">
-                    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-[95vw] lg:max-w-6xl overflow-hidden border-4 border-pink-300 transform scale-95 transition-transform duration-200 flex flex-col h-[90vh]">
-                        <div class="bg-gradient-to-r from-pink-400 to-rose-400 p-4 flex justify-between items-center text-white shrink-0">
-                            <h2 class="text-xl font-bold flex items-center gap-2">📖 單字特訓 <span id="learning-modal-title-badge" class="bg-white/30 px-2 py-0.5 rounded text-sm shadow-sm"></span></h2>
-                            <button onclick="closeGlobalModal('learning-modal')" class="hover:bg-white/30 rounded-full w-8 h-8 flex items-center justify-center font-bold text-xl transition-colors">✕</button>
-                        </div>
-                        <div class="p-4 md:p-6 overflow-y-auto flex-1 custom-scrollbar bg-pink-50/30" id="learning-content">
-                            <!-- 單字列表動態注入 -->
-                        </div>
-                        <div class="p-4 bg-white border-t border-pink-100 flex justify-between items-center shrink-0">
-                            <button onclick="prevPage()" id="btn-prev-page" class="px-5 py-2.5 rounded-xl font-bold text-pink-600 bg-pink-50 hover:bg-pink-100 border border-pink-200 transition-all invisible">◀ 上一頁</button>
-                            <span id="learning-page-indicator" class="font-bold text-gray-500 text-sm bg-gray-100 px-3 py-1 rounded-full"></span>
-                            <button onclick="nextPage()" id="btn-next-page" class="px-6 py-2.5 rounded-xl font-black text-white bg-pink-500 hover:bg-pink-600 shadow-md transition-all">下一頁 ▶</button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 測驗模式 Quiz Modal -->
-                <div id="quiz-modal" class="fixed inset-0 bg-gray-900/80 backdrop-blur-sm hidden items-center justify-center z-[90] p-4 transition-opacity duration-200 opacity-0" style="perspective: 1000px;">
-                    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-6xl overflow-hidden border-4 border-rose-300 transform scale-95 transition-transform duration-200 flex flex-col min-h-[80vh]">
-                        <div class="bg-gradient-to-r from-rose-400 to-pink-500 p-4 flex justify-between items-center text-white shrink-0">
-                            <h2 class="text-xl font-bold flex items-center gap-2">📝 實戰測驗 <span id="quiz-progress-badge" class="bg-white/30 px-2 py-0.5 rounded text-sm shadow-sm"></span></h2>
-                            <button onclick="closeGlobalModal('quiz-modal')" class="hover:bg-white/30 rounded-full w-8 h-8 flex items-center justify-center font-bold text-xl transition-colors">✕</button>
-                        </div>
-                        
-                        <!-- Progress Bar -->
-                        <div class="w-full bg-gray-100 h-2">
-                            <div id="quiz-progress-bar" class="bg-rose-400 h-2 transition-all duration-300" style="width: 0%"></div>
-                        </div>
-
-                        <div class="p-6 md:p-10 flex-1 flex flex-col items-center justify-center bg-rose-50/20 relative">
-                            <div id="quiz-question-container" class="text-center w-full max-w-4xl mx-auto flex flex-col justify-center flex-1">
-                                <!-- JS 動態注入題目與選項 -->
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 測驗結果 Modal -->
-                <div id="quiz-result-modal" class="fixed inset-0 bg-gray-900/90 backdrop-blur-md hidden items-center justify-center z-[100] p-4 transition-opacity duration-200 opacity-0">
-                    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden border-4 border-yellow-300 transform scale-95 transition-transform duration-200 flex flex-col p-8 text-center relative bg-gradient-to-b from-yellow-50 to-white">
-                        <div id="quiz-result-icon" class="text-7xl mb-2 drop-shadow-md animate-bounce">🏆</div>
-                        <h2 class="text-3xl font-black text-yellow-600 mb-1" id="quiz-result-grade">S 級</h2>
-                        <h3 class="text-xl font-bold text-gray-800 mb-6" id="quiz-result-score">答對 20 / 20 題</h3>
-                        
-                        <p class="font-bold text-gray-500 mb-6 text-sm" id="quiz-result-msg">太神啦！完美無瑕！<br>紀錄已更新至進度面板。</p>
-                        
-                        <div class="flex flex-col gap-3">
-                            <button onclick="openWeaknessCamp()" class="w-full py-3 rounded-xl font-black text-red-600 bg-red-50 border-2 border-red-200 hover:bg-red-100 transition-all shadow-sm">
-                                🔥 前往錯題集中營
-                            </button>
-                            <button onclick="closeGlobalModal('quiz-result-modal')" class="w-full py-3 rounded-xl font-bold text-gray-600 bg-white border border-gray-300 hover:bg-gray-50 shadow-sm transition-all">
-                                回到主畫面
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 錯題集中營 Modal -->
-                <div id="weakness-modal" class="fixed inset-0 bg-gray-900/80 backdrop-blur-sm hidden items-center justify-center z-[80] p-4 transition-opacity duration-200 opacity-0" onclick="if(event.target === this) closeGlobalModal('weakness-modal')">
-                    <div class="bg-white rounded-[2rem] shadow-2xl w-full max-w-[95vw] overflow-hidden border-4 border-red-300 transform scale-95 transition-transform duration-200 flex flex-col relative min-h-[90vh]">
-                        <div class="bg-gradient-to-r from-red-500 to-rose-500 p-4 flex justify-between items-center text-white shrink-0">
-                            <div class="flex items-center gap-4">
-                                <h2 class="text-xl font-bold flex items-center gap-2">🔥 錯題集中營</h2>
-                                <button onclick="openScoreBoard()" class="bg-white/20 hover:bg-white/30 text-white border border-white/50 px-3 py-1.5 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center gap-1">
-                                    📊 測驗成績總覽
+                    <!-- 測驗結果 Modal -->
+                    <div id="quiz-result-modal" class="fixed inset-0 bg-gray-900/90 backdrop-blur-md hidden items-center justify-center z-[100] p-4 transition-opacity duration-200 opacity-0">
+                        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden border-4 border-yellow-300 transform scale-95 transition-transform duration-200 flex flex-col p-8 text-center relative bg-gradient-to-b from-yellow-50 to-white">
+                            <div id="quiz-result-icon" class="text-7xl mb-2 drop-shadow-md animate-bounce">🏆</div>
+                            <h2 class="text-3xl font-black text-yellow-600 mb-1" id="quiz-result-grade">S 級</h2>
+                            <h3 class="text-xl font-bold text-gray-800 mb-6" id="quiz-result-score">答對 20 / 20 題</h3>
+                            
+                            <p class="font-bold text-gray-500 mb-6 text-sm" id="quiz-result-msg">太神啦！完美無瑕！<br>紀錄已更新至進度面板。</p>
+                            
+                            <div class="flex flex-col gap-3">
+                                <button onclick="openWeaknessCamp()" class="w-full py-3 rounded-xl font-black text-red-600 bg-red-50 border-2 border-red-200 hover:bg-red-100 transition-all shadow-sm">
+                                    🔥 前往錯題集中營
+                                </button>
+                                <button onclick="closeGlobalModal('quiz-result-modal')" class="w-full py-3 rounded-xl font-bold text-gray-600 bg-white border border-gray-300 hover:bg-gray-50 shadow-sm transition-all">
+                                    回到主畫面
                                 </button>
                             </div>
-                            <button onclick="closeGlobalModal('weakness-modal')" class="hover:bg-white/20 rounded-full w-8 h-8 flex items-center justify-center font-bold text-xl">✕</button>
-                        </div>
-                        <div class="p-4 md:p-6 bg-red-50/30 overflow-y-auto flex-1 custom-scrollbar" id="weakness-content">
-                            <!-- JS 動態注入錯題 -->
                         </div>
                     </div>
-                </div>
 
-                <!-- 成績總覽表 Modal -->
-                <div id="score-board-modal" class="fixed inset-0 bg-gray-900/80 backdrop-blur-sm hidden items-center justify-center z-[110] p-4 transition-opacity duration-200 opacity-0" onclick="if(event.target === this) closeGlobalModal('score-board-modal')">
-                    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-5xl overflow-hidden border-4 border-indigo-300 transform scale-95 transition-transform duration-200 flex flex-col min-h-[50vh]">
-                        <div class="bg-gradient-to-r from-indigo-500 to-purple-600 p-4 flex justify-between items-center text-white shrink-0">
-                            <h2 class="text-xl font-bold flex items-center gap-2">📊 全員測驗成績總覽</h2>
-                            <button onclick="closeGlobalModal('score-board-modal')" class="hover:bg-white/20 rounded-full w-8 h-8 flex items-center justify-center font-bold text-xl">✕</button>
-                        </div>
-                        <div class="p-6 flex-1 overflow-x-auto custom-scrollbar bg-gray-50">
-                            <table class="w-full text-center border-collapse bg-white shadow-sm rounded-xl overflow-hidden">
-                                <thead class="bg-indigo-100 text-indigo-800 border-b-2 border-indigo-200">
-                                    <tr id="score-board-header">
-                                        <!-- JS 注入 Header -->
-                                    </tr>
-                                </thead>
-                                <tbody id="score-board-body" class="divide-y divide-gray-100">
-                                    <!-- JS 注入 Data -->
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 瀑布流總覽 Modal -->
-                <div id="waterfall-modal" class="fixed inset-0 bg-gray-900/80 backdrop-blur-sm hidden items-center justify-center z-[80] p-4 transition-opacity duration-200 opacity-0" onclick="if(event.target === this) closeGlobalModal('waterfall-modal')">
-                    <div class="bg-white rounded-[2rem] shadow-2xl w-full max-w-[95vw] lg:max-w-6xl overflow-hidden border-4 border-pink-300 transform scale-95 transition-transform duration-200 flex flex-col relative h-[90vh]">
-                        <div class="bg-gradient-to-r from-pink-500 to-rose-500 p-4 flex justify-between items-center text-white shrink-0">
-                            <h2 class="text-xl font-bold flex items-center gap-2" id="waterfall-title">👁️ 單字總覽</h2>
-                            <button onclick="closeGlobalModal('waterfall-modal')" class="hover:bg-white/20 rounded-full w-8 h-8 flex items-center justify-center font-bold text-xl">✕</button>
-                        </div>
-                        <div class="p-4 md:p-6 bg-pink-50/30 overflow-y-auto flex-1 custom-scrollbar" id="waterfall-content">
-                            <!-- 瀑布流卡片注入處 -->
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 進度追蹤 Modal -->
-                <div id="progress-modal" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm hidden items-center justify-center z-[70] p-4 transition-opacity duration-200 opacity-0" onclick="if(event.target === this) closeGlobalModal('progress-modal')">
-                    <div class="bg-white rounded-[2rem] shadow-2xl w-full max-w-6xl overflow-hidden border-4 border-rose-300 transform scale-95 transition-transform duration-200 flex flex-col relative min-h-[85vh]">
-                        <div class="bg-gradient-to-r from-rose-400 to-pink-500 p-4 flex justify-between items-center text-white shrink-0">
-                            <h2 class="text-xl font-bold flex items-center gap-2" id="progress-user-name">📈 單字闖關進度</h2>
-                            <button onclick="closeGlobalModal('progress-modal')" class="hover:bg-white/20 rounded-full w-8 h-8 flex items-center justify-center font-bold text-xl">✕</button>
-                        </div>
-                        <div class="p-6 bg-rose-50/30 overflow-y-auto flex-1 custom-scrollbar" id="progress-content">
-                            <!-- JS 動態注入 -->
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 瀏覽公開資料卡 Modal -->
-                <div id="view-profile-modal" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm hidden items-center justify-center z-[80] p-4 transition-opacity duration-200 opacity-0" onclick="if(event.target === this) closeGlobalModal('view-profile-modal')">
-                    <div class="bg-white rounded-[2rem] shadow-2xl w-full max-w-sm overflow-hidden transform scale-95 transition-transform duration-200 flex flex-col relative border-4 border-pink-200">
-                        <button onclick="closeGlobalModal('view-profile-modal')" class="absolute top-4 right-4 bg-black/20 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold z-10 hover:bg-black/40">✕</button>
-                        <div class="h-32 bg-gradient-to-r from-pink-400 to-rose-400 w-full relative"></div>
-                        <div class="px-6 pb-6 pt-0 relative flex flex-col items-center mt-[-3rem]">
-                            <img id="vp-photo" src="" class="w-24 h-24 rounded-full border-4 border-white shadow-lg object-cover bg-pink-50 mb-3" style="display:none;">
-                            <div id="vp-avatar-fallback" class="w-24 h-24 rounded-full border-4 border-white shadow-lg flex items-center justify-center text-3xl font-black mb-3"></div>
-                            
-                            <h2 class="text-2xl font-black text-gray-800" id="vp-nickname"></h2>
-                            <p class="text-sm text-gray-400 font-bold mb-4" id="vp-name"></p>
-                            
-                            <div class="w-full space-y-3 text-sm">
-                                <div class="bg-rose-50 rounded-xl p-3 border border-rose-100 text-center">
-                                    <div class="text-xs text-rose-400 font-bold mb-1">🎯 目標</div>
-                                    <div class="font-black text-rose-600 text-lg" id="vp-target">-</div>
+                    <!-- 錯題集中營 Modal -->
+                    <div id="weakness-modal" class="fixed inset-0 bg-gray-900/80 backdrop-blur-sm hidden items-center justify-center z-[80] p-4 transition-opacity duration-200 opacity-0" onclick="if(event.target === this) closeGlobalModal('weakness-modal')">
+                        <div class="bg-white rounded-[2rem] shadow-2xl w-full max-w-[95vw] lg:max-w-6xl overflow-hidden border-4 border-red-300 transform scale-95 transition-transform duration-200 flex flex-col relative min-h-[90vh]">
+                            <div class="bg-gradient-to-r from-red-500 to-rose-500 p-4 flex justify-between items-center text-white shrink-0">
+                                <div class="flex items-center gap-4">
+                                    <h2 class="text-xl font-bold flex items-center gap-2">🔥 錯題集中營</h2>
+                                    <button onclick="openScoreBoard()" class="bg-white/20 hover:bg-white/30 text-white border border-white/50 px-3 py-1.5 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center gap-1">
+                                        📊 測驗成績總覽
+                                    </button>
                                 </div>
-                                <div class="bg-gray-50 rounded-xl p-3 border border-gray-100 text-center">
-                                    <div class="text-xs text-gray-400 font-bold mb-1">💡 座右銘</div>
-                                    <div class="font-bold text-gray-600 italic" id="vp-motto">無</div>
-                                </div>
-                                <div class="text-center text-xs text-gray-400 font-bold mt-2" id="vp-birthday"></div>
+                                <button onclick="closeGlobalModal('weakness-modal')" class="hover:bg-white/20 rounded-full w-8 h-8 flex items-center justify-center font-bold text-xl">✕</button>
+                            </div>
+                            <div class="p-4 md:p-6 bg-red-50/30 overflow-y-auto flex-1 custom-scrollbar" id="weakness-content">
+                                <!-- JS 動態注入錯題 -->
                             </div>
                         </div>
                     </div>
-                </div>
-            `;
+
+                    <!-- 成績總覽表 Modal -->
+                    <div id="score-board-modal" class="fixed inset-0 bg-gray-900/80 backdrop-blur-sm hidden items-center justify-center z-[110] p-4 transition-opacity duration-200 opacity-0" onclick="if(event.target === this) closeGlobalModal('score-board-modal')">
+                        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-5xl overflow-hidden border-4 border-indigo-300 transform scale-95 transition-transform duration-200 flex flex-col min-h-[50vh]">
+                            <div class="bg-gradient-to-r from-indigo-500 to-purple-600 p-4 flex justify-between items-center text-white shrink-0">
+                                <h2 class="text-xl font-bold flex items-center gap-2">📊 全員測驗成績總覽</h2>
+                                <button onclick="closeGlobalModal('score-board-modal')" class="hover:bg-white/20 rounded-full w-8 h-8 flex items-center justify-center font-bold text-xl">✕</button>
+                            </div>
+                            <div class="p-6 flex-1 overflow-x-auto custom-scrollbar bg-gray-50">
+                                <table class="w-full text-center border-collapse bg-white shadow-sm rounded-xl overflow-hidden">
+                                    <thead class="bg-indigo-100 text-indigo-800 border-b-2 border-indigo-200">
+                                        <tr id="score-board-header">
+                                            <!-- JS 注入 Header -->
+                                        </tr>
+                                    </thead>
+                                    <tbody id="score-board-body" class="divide-y divide-gray-100">
+                                        <!-- JS 注入 Data -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 瀑布流總覽 Modal -->
+                    <div id="waterfall-modal" class="fixed inset-0 bg-gray-900/80 backdrop-blur-sm hidden items-center justify-center z-[80] p-4 transition-opacity duration-200 opacity-0" onclick="if(event.target === this) closeGlobalModal('waterfall-modal')">
+                        <div class="bg-white rounded-[2rem] shadow-2xl w-full max-w-[95vw] lg:max-w-6xl overflow-hidden border-4 border-pink-300 transform scale-95 transition-transform duration-200 flex flex-col relative h-[90vh]">
+                            <div class="bg-gradient-to-r from-pink-500 to-rose-500 p-4 flex justify-between items-center text-white shrink-0">
+                                <h2 class="text-xl font-bold flex items-center gap-2" id="waterfall-title">👁️ 單字總覽</h2>
+                                <button onclick="closeGlobalModal('waterfall-modal')" class="hover:bg-white/20 rounded-full w-8 h-8 flex items-center justify-center font-bold text-xl">✕</button>
+                            </div>
+                            <div class="p-4 md:p-6 bg-pink-50/30 overflow-y-auto flex-1 custom-scrollbar" id="waterfall-content">
+                                <!-- 瀑布流卡片注入處 -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 進度追蹤 Modal -->
+                    <div id="progress-modal" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm hidden items-center justify-center z-[70] p-4 transition-opacity duration-200 opacity-0" onclick="if(event.target === this) closeGlobalModal('progress-modal')">
+                        <div class="bg-white rounded-[2rem] shadow-2xl w-full max-w-[95vw] lg:max-w-6xl overflow-hidden border-4 border-rose-300 transform scale-95 transition-transform duration-200 flex flex-col relative min-h-[85vh]">
+                            <div class="bg-gradient-to-r from-rose-400 to-pink-500 p-4 flex justify-between items-center text-white shrink-0">
+                                <h2 class="text-xl font-bold flex items-center gap-2" id="progress-user-name">📈 單字闖關進度</h2>
+                                <button onclick="closeGlobalModal('progress-modal')" class="hover:bg-white/20 rounded-full w-8 h-8 flex items-center justify-center font-bold text-xl">✕</button>
+                            </div>
+                            <div class="p-6 bg-rose-50/30 overflow-y-auto flex-1 custom-scrollbar" id="progress-content">
+                                <!-- JS 動態注入 -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 瀏覽公開資料卡 Modal -->
+                    <div id="view-profile-modal" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm hidden items-center justify-center z-[80] p-4 transition-opacity duration-200 opacity-0" onclick="if(event.target === this) closeGlobalModal('view-profile-modal')">
+                        <div class="bg-white rounded-[2rem] shadow-2xl w-full max-w-sm overflow-hidden transform scale-95 transition-transform duration-200 flex flex-col relative border-4 border-pink-200">
+                            <button onclick="closeGlobalModal('view-profile-modal')" class="absolute top-4 right-4 bg-black/20 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold z-10 hover:bg-black/40">✕</button>
+                            <div class="h-32 bg-gradient-to-r from-pink-400 to-rose-400 w-full relative"></div>
+                            <div class="px-6 pb-6 pt-0 relative flex flex-col items-center mt-[-3rem]">
+                                <img id="vp-photo" src="" class="w-24 h-24 rounded-full border-4 border-white shadow-lg object-cover bg-pink-50 mb-3" style="display:none;">
+                                <div id="vp-avatar-fallback" class="w-24 h-24 rounded-full border-4 border-white shadow-lg flex items-center justify-center text-3xl font-black mb-3"></div>
+                                
+                                <h2 class="text-2xl font-black text-gray-800" id="vp-nickname"></h2>
+                                <p class="text-sm text-gray-400 font-bold mb-4" id="vp-name"></p>
+                                
+                                <div class="w-full space-y-3 text-sm">
+                                    <div class="bg-rose-50 rounded-xl p-3 border border-rose-100 text-center">
+                                        <div class="text-xs text-rose-400 font-bold mb-1">🎯 目標</div>
+                                        <div class="font-black text-rose-600 text-lg" id="vp-target">-</div>
+                                    </div>
+                                    <div class="bg-gray-50 rounded-xl p-3 border border-gray-100 text-center">
+                                        <div class="text-xs text-gray-400 font-bold mb-1">💡 座右銘</div>
+                                        <div class="font-bold text-gray-600 italic" id="vp-motto">無</div>
+                                    </div>
+                                    <div class="text-center text-xs text-gray-400 font-bold mt-2" id="vp-birthday"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } catch(e) { console.error("renderGlobalModals error", e); }
         };
 
         window.openGlobalModal = (id) => {
-            const modal = document.getElementById(id);
-            if(!modal) return;
-            modal.classList.remove('hidden');
-            modal.classList.add('flex');
-            setTimeout(() => {
-                modal.classList.remove('opacity-0');
-                const inner = modal.firstElementChild;
-                if(inner.classList.contains('scale-95')) inner.classList.remove('scale-95');
-            }, 10);
+            try {
+                const modal = document.getElementById(id);
+                if(!modal) return;
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+                setTimeout(() => {
+                    modal.classList.remove('opacity-0');
+                    const inner = modal.firstElementChild;
+                    if(inner.classList.contains('scale-95')) inner.classList.remove('scale-95');
+                }, 10);
+            } catch(e) { console.error(e); }
         };
 
         window.closeGlobalModal = (id) => {
-            const modal = document.getElementById(id);
-            if(!modal) return;
-            modal.classList.add('opacity-0');
-            const inner = modal.firstElementChild;
-            if(inner && inner.classList.contains('scale-95') === false) inner.classList.add('scale-95');
-            setTimeout(() => {
-                modal.classList.add('hidden');
-                modal.classList.remove('flex');
-            }, 200);
+            try {
+                const modal = document.getElementById(id);
+                if(!modal) return;
+                modal.classList.add('opacity-0');
+                const inner = modal.firstElementChild;
+                if(inner && inner.classList.contains('scale-95') === false) inner.classList.add('scale-95');
+                setTimeout(() => {
+                    modal.classList.add('hidden');
+                    modal.classList.remove('flex');
+                }, 200);
+            } catch(e) { console.error(e); }
         };
 
         // ==========================================
         //  進度追蹤 Modal 與 總覽功能
         // ==========================================
         window.openProgressModal = () => {
-            const targetUser = viewingUser === 'ALL' ? username : viewingUser;
-            if (!targetUser) return;
-            const dispName = usersProfile[targetUser]?.nickname || targetUser;
-            document.getElementById('progress-user-name').innerText = `📈 ${dispName} 的單字進度`;
+            try {
+                const targetUser = viewingUser === 'ALL' ? username : viewingUser;
+                if (!targetUser) return;
+                const dispName = usersProfile[targetUser]?.nickname || targetUser;
+                document.getElementById('progress-user-name').innerText = `📈 ${dispName} 的單字進度`;
 
-            let html = '<div class="space-y-4">';
-            LEVELS.forEach(lvl => {
-                const levelWords = Object.values(allVocab).filter(v => v.level === lvl);
-                const totalWords = levelWords.length;
-                const progressDocId = `${targetUser}_${lvl}`;
-                const learnedWords = allProgress[progressDocId]?.lastIndex || 0;
-                const bestScore = allProgress[progressDocId]?.bestScore || '-';
-                const percent = totalWords > 0 ? Math.min(100, Math.round((learnedWords / totalWords) * 100)) : 0;
-                
-                let scoreBadge = '';
-                if(bestScore !== '-') {
-                    let color = 'bg-gray-100 text-gray-600';
-                    if(bestScore >= 20) color = 'bg-yellow-100 text-yellow-700 border border-yellow-300';
-                    else if(bestScore >= 16) color = 'bg-green-100 text-green-700 border border-green-300';
-                    else if(bestScore >= 12) color = 'bg-blue-100 text-blue-700 border border-blue-300';
-                    scoreBadge = `<span class="ml-2 px-2 py-0.5 rounded text-xs font-black ${color} shadow-sm" title="此等級測驗最高分">👑 最高 ${bestScore}/20</span>`;
-                }
+                let html = '<div class="space-y-4">';
+                LEVELS.forEach(lvl => {
+                    const levelWords = Object.values(allVocab).filter(v => v.level === lvl);
+                    const totalWords = levelWords.length;
+                    const progressDocId = `${targetUser}_${lvl}`;
+                    const learnedWords = allProgress[progressDocId]?.lastIndex || 0;
+                    const bestScore = allProgress[progressDocId]?.bestScore || '-';
+                    const percent = totalWords > 0 ? Math.min(100, Math.round((learnedWords / totalWords) * 100)) : 0;
+                    
+                    let scoreBadge = '';
+                    if(bestScore !== '-') {
+                        let color = 'bg-gray-100 text-gray-600';
+                        if(bestScore >= 20) color = 'bg-yellow-100 text-yellow-700 border border-yellow-300';
+                        else if(bestScore >= 16) color = 'bg-green-100 text-green-700 border border-green-300';
+                        else if(bestScore >= 12) color = 'bg-blue-100 text-blue-700 border border-blue-300';
+                        scoreBadge = `<span class="ml-2 px-2 py-0.5 rounded text-xs font-black ${color} shadow-sm" title="此等級測驗最高分">👑 最高 ${bestScore}/20</span>`;
+                    }
 
-                html += `
-                    <div class="bg-white p-4 md:p-5 rounded-2xl shadow-sm border border-pink-100 hover:shadow-md transition-shadow relative">
-                        <button onclick="openWaterfall('${lvl}')" class="absolute top-4 right-4 bg-pink-50 text-pink-600 hover:bg-pink-100 border border-pink-200 px-3 py-1.5 rounded-lg text-sm font-bold flex items-center gap-1 transition-colors shadow-sm">
-                            👁️ 總覽單字
-                        </button>
-                        
-                        <div class="flex items-center mb-3">
-                            <h4 class="font-black text-xl text-rose-600">${lvl}</h4>
-                            ${scoreBadge}
+                    html += `
+                        <div class="bg-white p-4 md:p-5 rounded-2xl shadow-sm border border-pink-100 hover:shadow-md transition-shadow relative">
+                            <button onclick="openWaterfall('${lvl}')" class="absolute top-4 right-4 bg-pink-50 text-pink-600 hover:bg-pink-100 border border-pink-200 px-3 py-1.5 rounded-lg text-sm font-bold flex items-center gap-1 transition-colors shadow-sm">
+                                👁️ 總覽單字
+                            </button>
+                            
+                            <div class="flex items-center mb-3">
+                                <h4 class="font-black text-xl text-rose-600">${lvl}</h4>
+                                ${scoreBadge}
+                            </div>
+                            
+                            <div class="flex justify-between items-end mb-1 pr-32">
+                                <span class="text-sm font-bold text-gray-500">${learnedWords} / ${totalWords} 字 (${percent}%)</span>
+                            </div>
+                            <div class="w-full bg-pink-50 rounded-full h-4 overflow-hidden border border-pink-100">
+                                <div class="bg-gradient-to-r from-pink-400 to-rose-400 h-4 rounded-full transition-all duration-500" style="width: ${percent}%"></div>
+                            </div>
                         </div>
-                        
-                        <div class="flex justify-between items-end mb-1 pr-32">
-                            <span class="text-sm font-bold text-gray-500">${learnedWords} / ${totalWords} 字 (${percent}%)</span>
-                        </div>
-                        <div class="w-full bg-pink-50 rounded-full h-4 overflow-hidden border border-pink-100">
-                            <div class="bg-gradient-to-r from-pink-400 to-rose-400 h-4 rounded-full transition-all duration-500" style="width: ${percent}%"></div>
-                        </div>
-                    </div>
-                `;
-            });
-            html += '</div>';
+                    `;
+                });
+                html += '</div>';
 
-            document.getElementById('progress-content').innerHTML = html;
-            openGlobalModal('progress-modal');
+                document.getElementById('progress-content').innerHTML = html;
+                openGlobalModal('progress-modal');
+            } catch(e) { console.error("openProgressModal error", e); }
         };
 
         window.openWaterfall = (level) => {
-            const levelWords = Object.values(allVocab).filter(v => v.level === level).sort((a,b) => a.index - b.index);
-            document.getElementById('waterfall-title').innerText = `👁️ ${level} 單字總覽 (${levelWords.length} 字)`;
-            
-            if(levelWords.length === 0) {
-                document.getElementById('waterfall-content').innerHTML = `<div class="text-center text-gray-400 font-bold mt-10">此等級尚無單字資料</div>`;
-                openGlobalModal('waterfall-modal');
-                return;
-            }
-
-            let html = '<div class="columns-1 md:columns-2 lg:columns-3 gap-4 space-y-4">';
-            levelWords.forEach(w => {
-                const favId = `${username}_${w.id}`;
-                const isFav = !!allFavorites[favId];
-                const safeWord = escapeQuotes(w.word);
+            try {
+                const levelWords = Object.values(allVocab).filter(v => v.level === level).sort((a,b) => a.index - b.index);
+                document.getElementById('waterfall-title').innerText = `👁️ ${level} 單字總覽 (${levelWords.length} 字)`;
                 
-                html += `
-                    <div class="bg-white p-4 rounded-xl border border-pink-100 shadow-sm break-inside-avoid hover:shadow-md transition-shadow group relative">
-                        <button onclick="toggleFavorite('${w.id}', event)" class="absolute top-3 right-3 text-lg hover:scale-125 transition-transform" title="收藏">
-                            ${isFav ? '❤️' : '🤍'}
-                        </button>
-                        <div class="flex items-center gap-2 mb-2 pr-8">
-                            <button onclick="playAudio('${safeWord}', event)" class="w-7 h-7 bg-pink-50 text-pink-600 rounded-full flex items-center justify-center hover:bg-pink-100 border border-pink-200 shrink-0 text-xs">🔊</button>
-                            <h4 class="font-black text-lg text-gray-800 break-words">${w.word}</h4>
-                        </div>
-                        <div class="text-sm font-bold text-rose-500 mb-2"><span class="text-gray-400 mr-1">${w.pos}</span>${w.meaning}</div>
-                        ${w.sentence ? `
-                            <div class="bg-gray-50 p-2 rounded text-xs border border-gray-100 mt-2">
-                                <div class="text-gray-600 font-medium mb-1">${w.sentence}</div>
-                                <div class="text-gray-400">${w.translation}</div>
-                            </div>
-                        ` : ''}
-                        <div class="absolute bottom-2 right-3 text-[10px] text-gray-300 font-mono hidden group-hover:block">#${w.index}</div>
-                    </div>
-                `;
-            });
-            html += '</div>';
+                if(levelWords.length === 0) {
+                    document.getElementById('waterfall-content').innerHTML = `<div class="text-center text-gray-400 font-bold mt-10">此等級尚無單字資料</div>`;
+                    openGlobalModal('waterfall-modal');
+                    return;
+                }
 
-            document.getElementById('waterfall-content').innerHTML = html;
-            openGlobalModal('waterfall-modal');
+                let html = '<div class="columns-1 md:columns-2 lg:columns-3 gap-4 space-y-4">';
+                levelWords.forEach(w => {
+                    const favId = `${username}_${w.id}`;
+                    const isFav = !!allFavorites[favId];
+                    const safeWord = escapeQuotes(w.word);
+                    
+                    html += `
+                        <div class="bg-white p-4 rounded-xl border border-pink-100 shadow-sm break-inside-avoid hover:shadow-md transition-shadow group relative">
+                            <button onclick="toggleFavorite('${w.id}', event)" class="absolute top-3 right-3 text-lg hover:scale-125 transition-transform" title="收藏">
+                                ${isFav ? '❤️' : '🤍'}
+                            </button>
+                            <div class="flex items-center gap-2 mb-2 pr-8">
+                                <button onclick="playAudio('${safeWord}', event)" class="w-7 h-7 bg-pink-50 text-pink-600 rounded-full flex items-center justify-center hover:bg-pink-100 border border-pink-200 shrink-0 text-xs">🔊</button>
+                                <h4 class="font-black text-lg text-gray-800 break-words">${w.word}</h4>
+                            </div>
+                            <div class="text-sm font-bold text-rose-500 mb-2"><span class="text-gray-400 mr-1">${w.pos}</span>${w.meaning}</div>
+                            ${w.sentence ? `
+                                <div class="bg-gray-50 p-2 rounded text-xs border border-gray-100 mt-2">
+                                    <div class="text-gray-600 font-medium mb-1">${w.sentence}</div>
+                                    <div class="text-gray-400">${w.translation}</div>
+                                </div>
+                            ` : ''}
+                            <div class="absolute bottom-2 right-3 text-[10px] text-gray-300 font-mono hidden group-hover:block">#${w.index}</div>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+
+                document.getElementById('waterfall-content').innerHTML = html;
+                openGlobalModal('waterfall-modal');
+            } catch(e) { console.error("openWaterfall error", e); }
         };
 
         // ==========================================
@@ -769,9 +780,7 @@
             try {
                 await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'System', 'Chat'), { messages: newChat });
                 input.value = '';
-            } catch(e) {
-                console.error(e);
-            }
+            } catch(e) { console.error(e); }
         };
 
         window.insertEmoji = (emoji) => {
@@ -967,195 +976,413 @@
             setupListeners();    
         };
 
+        window.openPublicProfile = (name) => {
+            try {
+                const prof = usersProfile[name] || {};
+                document.getElementById('vp-nickname').innerText = prof.nickname || name;
+                document.getElementById('vp-name').innerText = `@${name}`;
+                document.getElementById('vp-target').innerText = prof.target || '未設定';
+                document.getElementById('vp-motto').innerText = prof.motto ? `「${prof.motto}」` : '默默努力中...';
+                document.getElementById('vp-birthday').innerText = prof.birthday ? `🎂 ${prof.birthday}` : '';
+
+                const imgEl = document.getElementById('vp-photo');
+                const fallbackEl = document.getElementById('vp-avatar-fallback');
+                
+                if(prof.photo) {
+                    imgEl.src = prof.photo;
+                    imgEl.style.display = 'block';
+                    fallbackEl.style.display = 'none';
+                } else {
+                    imgEl.style.display = 'none';
+                    fallbackEl.innerText = getAvatarChar(name);
+                    fallbackEl.style.display = 'flex';
+                    fallbackEl.className = `w-24 h-24 rounded-full border-4 border-white shadow-lg flex items-center justify-center text-3xl font-black mb-3 ${getUserColor(name)}`;
+                }
+                openGlobalModal('view-profile-modal');
+            } catch(e) { console.error("openPublicProfile error", e); }
+        };
+
+        // ==========================================
+        //  UI 渲染函式 - 月曆與最愛單字
+        // ==========================================
+        window.renderSidebar = () => {
+            try {
+                const container = document.getElementById('sidebar-countdowns');
+                if(!container) return;
+                const examDaysLeft = getDaysLeft(EXAM_DATE);
+                let html = `
+                    <div class="bg-gradient-to-br from-pink-400 to-rose-500 rounded-2xl p-5 text-center shadow-lg text-white mb-4 transform hover:scale-[1.02] transition-transform border border-pink-300 shrink-0 z-10 relative">
+                        <h3 class="text-sm font-bold text-pink-100 mb-1">會考大日子 (2027-05-22)</h3>
+                        <div class="text-5xl font-black drop-shadow-md mb-2">${examDaysLeft >= 0 ? examDaysLeft : 0} <span class="text-xl">天</span></div>
+                        <div class="text-xs bg-black/20 rounded-full inline-block px-3 py-1 font-bold">🎯 決戰時刻</div>
+                    </div>
+                    <h4 class="font-bold text-pink-700 mb-2 flex items-center gap-2 shrink-0 z-10 relative">🗓️ 重要考試里程碑</h4>
+                    <div class="marquee-container flex-1 w-full relative z-0 pb-1">
+                        <div class="marquee-content space-y-3 pt-2">
+                `;
+                const sortedDates = [...importantDates].sort((a, b) => new Date(a.date) - new Date(b.date));
+                sortedDates.forEach((item) => {
+                    const days = getDaysLeft(item.date);
+                    if (days >= 0) {
+                        html += `
+                            <div class="bg-white p-3 rounded-xl border border-pink-100 shadow-sm flex justify-between items-center relative overflow-hidden group">
+                                <div class="absolute left-0 top-0 bottom-0 w-1.5 bg-pink-400"></div>
+                                <div class="pl-2">
+                                    <div class="text-sm font-bold text-gray-700">${item.title}</div>
+                                    <div class="text-xs text-gray-400">${item.date}</div>
+                                </div>
+                                <div class="text-right">
+                                    <span class="text-xl font-black ${days <= 7 ? 'text-red-500' : 'text-pink-500'}">${days}</span>
+                                    <span class="text-xs text-gray-500">天</span>
+                                </div>
+                            </div>
+                        `;
+                    }
+                });
+                html += `</div></div>`;
+                container.innerHTML = html;
+            } catch(e) { console.error("renderSidebar error", e); }
+        };
+
+        window.renderChat = () => {
+            try {
+                const container = document.getElementById('chat-messages');
+                if(!container) return;
+                container.innerHTML = chatMessages.map(msg => {
+                    const isMe = msg.user === username;
+                    const displayName = usersProfile[msg.user]?.nickname || msg.user;
+                    return `
+                        <div class="flex flex-col ${isMe ? 'items-end' : 'items-start'}">
+                            <span class="text-[10px] text-gray-400 mb-0.5 px-1">${displayName}</span>
+                            <div class="${isMe ? 'chat-bubble-me' : 'chat-bubble-other'} px-3 py-2 text-gray-700 shadow-sm inline-block max-w-[90%] break-words">
+                                ${msg.text}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                container.scrollTop = container.scrollHeight;
+            } catch(e) { console.error("renderChat error", e); }
+        };
+
+        window.renderFavorites = () => {
+            try {
+                const container = document.getElementById('favorites-feed');
+                if(!container) return;
+                
+                const myFavIds = Object.values(allFavorites).filter(f => f.user === username).map(f => f.wordId);
+                const myFavWords = myFavIds.map(id => allVocab[id]).filter(Boolean);
+                
+                if(myFavWords.length === 0) {
+                    container.innerHTML = `<div class="text-center text-rose-300 font-bold mt-10">尚無收藏的單字<br><span class="text-xs">在學習時點擊愛心即可收藏 ❤️</span></div>`;
+                    return;
+                }
+                
+                container.innerHTML = myFavWords.map(w => `
+                    <div class="bg-white p-3 rounded-xl border border-rose-100 shadow-sm flex flex-col relative group">
+                        <div class="flex justify-between items-start">
+                            <h4 class="font-black text-lg text-gray-800 pr-6">${w.word}</h4>
+                            <button onclick="toggleFavorite('${w.id}', event)" class="absolute top-3 right-3 text-rose-500 hover:scale-125 transition-transform" title="取消收藏">❤️</button>
+                        </div>
+                        <div class="text-sm text-pink-600 font-bold mb-1">${w.pos} ${w.meaning}</div>
+                        <button onclick="playAudio('${escapeQuotes(w.word)}', event)" class="absolute bottom-2 right-2 bg-pink-50 text-pink-600 w-8 h-8 flex items-center justify-center rounded-full hover:bg-pink-100 opacity-50 group-hover:opacity-100 transition-opacity text-xs">🔊</button>
+                    </div>
+                `).join('');
+            } catch(e) { console.error("renderFavorites error", e); }
+        };
+
+        window.changeMonth = (delta) => {
+            currentMonth += delta;
+            if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+            if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+            window.renderMainContent();
+        };
+
+        window.changeViewingUser = (user) => {
+            viewingUser = user;
+            window.renderCalendar();
+        };
+
+        window.renderCalendar = () => {
+            try {
+                const container = document.getElementById('calendar-grid');
+                const headerContainer = document.getElementById('calendar-header-container');
+                if(!container || !headerContainer) return;
+
+                headerContainer.innerHTML = `
+                    <h2 class="text-xl md:text-2xl font-black text-pink-600 tracking-wide">${currentYear} 年 ${currentMonth + 1} 月</h2>
+                    <select onchange="changeViewingUser(this.value)" class="text-xs md:text-sm font-bold text-pink-700 bg-pink-50 pl-3 pr-7 py-1 md:py-1.5 rounded-full mt-1 border border-pink-200 focus:outline-none focus:ring-2 focus:ring-pink-400 cursor-pointer shadow-sm w-auto max-w-full text-ellipsis overflow-hidden">
+                        <option value="ALL" ${viewingUser === 'ALL' ? 'selected' : ''}>🌍 全部進度</option>
+                        ${globalUsers.map((u, idx) => {
+                            const dispName = usersProfile[u]?.nickname || u;
+                            const circleNum = getCircleNum(idx);
+                            return `<option value="${u}" ${u === viewingUser ? 'selected' : ''}>${circleNum} ${dispName} 的進度</option>`;
+                        }).join('')}
+                    </select>
+                `;
+
+                const firstDay = new Date(currentYear, currentMonth, 1).getDay();
+                const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+                const startPad = firstDay === 0 ? 6 : firstDay - 1;
+
+                let html = `<div class="grid grid-cols-7 gap-1 md:gap-2 mb-2 shrink-0">`;
+                ['一', '二', '三', '四', '五', '六', '日'].forEach((d, idx) => {
+                    const isWeekend = idx >= 5;
+                    html += `<div class="text-center font-bold ${isWeekend ? 'text-rose-500 bg-rose-50' : 'text-pink-700 bg-pink-50'} py-1 md:py-2 text-sm md:text-base rounded-lg md:rounded-xl shadow-sm border border-gray-100">${d}</div>`;
+                });
+                html += `</div><div class="grid grid-cols-7 gap-1 md:gap-2 flex-1 auto-rows-[100px] md:auto-rows-[120px] overflow-y-auto custom-scrollbar pb-4 pr-1 pl-1">`;
+
+                for(let i=0; i<startPad; i++) html += `<div class="bg-white/30 rounded-xl md:rounded-2xl border border-transparent"></div>`;
+
+                for(let d=1; d<=daysInMonth; d++) {
+                    const dateStr = `${currentYear}-${String(currentMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+                    const isToday = dateStr === formatDate(new Date());
+                    const isImportant = importantDates.find(i => i.date === dateStr);
+                    
+                    const headerClass = isToday 
+                        ? 'bg-gradient-to-r from-pink-400 to-rose-400 text-white shadow-md' 
+                        : isImportant 
+                            ? 'bg-gradient-to-r from-orange-400 to-red-400 text-white shadow-md' 
+                            : 'bg-pink-50 text-pink-700';
+
+                    // 計算當日是否有活動
+                    let activeUsers = new Set();
+                    Object.values(allActivities).forEach(act => {
+                        if(act.date === dateStr && (viewingUser === 'ALL' || act.user === viewingUser)) {
+                            activeUsers.add(act.user);
+                        }
+                    });
+
+                    const clickAction = (viewingUser === username || viewingUser === 'ALL') 
+                        ? `openLevelModal('${dateStr}')` 
+                        : '';
+                    
+                    const avatarsHtml = viewingUser === 'ALL' && activeUsers.size > 0 ? Array.from(activeUsers).map(u => `
+                        <div class="${getUserColor(u)} w-5 h-5 md:w-6 md:h-6 rounded-full flex items-center justify-center text-[10px] md:text-xs font-bold shadow-sm" title="${usersProfile[u]?.nickname || u}">
+                            ${getAvatarChar(u)}
+                        </div>
+                    `).join('') : '';
+
+                    let cellHTML = `
+                        <div onclick="${clickAction}" class="bg-white border-2 border-pink-100 p-1 md:p-2 rounded-xl md:rounded-2xl shadow-sm flex flex-col transition-all cursor-pointer hover:border-pink-400 hover:shadow-md hover:-translate-y-1 overflow-hidden group relative h-full">
+                            <div class="flex justify-between items-start shrink-0 mb-1 w-full">
+                                <span class="w-5 h-5 md:w-7 md:h-7 flex items-center justify-center rounded-full text-xs md:text-sm font-bold ${headerClass} shrink-0">${d}</span>
+                                ${isImportant ? `<span class="text-xs md:text-sm drop-shadow-sm group-hover:scale-125 transition-transform shrink-0" title="${isImportant.title}">🔥</span>` : ''}
+                            </div>
+                            <div class="flex flex-wrap justify-start gap-1 w-full mt-1 overflow-y-auto custom-scrollbar">
+                                ${avatarsHtml}
+                            </div>
+                        </div>
+                    `;
+
+                    html += cellHTML;
+                }
+                html += `</div>`;
+                container.innerHTML = html;
+            } catch(e) { console.error("renderCalendar error", e); }
+        };
+
+        window.renderMainContent = () => {
+            try {
+                if(window.renderCalendar) window.renderCalendar();
+                if(window.renderFavorites) window.renderFavorites();
+            } catch(e) { console.error("renderMainContent error", e); }
+        };
+
         // ==========================================
         //  全新學習流程：選擇 Level 與 學習列表
         // ==========================================
         window.openLevelModal = (dateStr) => {
-            document.getElementById('level-modal-date').innerText = `選擇日期: ${dateStr}`;
-            modalState.date = dateStr;
-            
-            // 繪製等級按鈕
-            const levelContainer = document.getElementById('level-buttons-container');
-            levelContainer.innerHTML = LEVELS.map(lvl => `<button onclick="startLearning('${lvl}')" class="py-4 rounded-xl border-2 border-pink-200 text-pink-600 font-black text-lg hover:bg-pink-500 hover:text-white transition-all bg-white shadow-sm hover:scale-[1.02]">${lvl}</button>`).join('');
-            
-            // 檢查是否有任一等級有學習進度，如果有，顯示複習與測驗按鈕
-            let hasAnyProgress = false;
-            let currentSelectedLevel = modalState.level || LEVELS[0]; 
+            try {
+                document.getElementById('level-modal-date').innerText = `選擇日期: ${dateStr}`;
+                modalState.date = dateStr;
+                
+                // 繪製等級按鈕
+                const levelContainer = document.getElementById('level-buttons-container');
+                levelContainer.innerHTML = LEVELS.map(lvl => `<button onclick="startLearning('${lvl}')" class="py-4 rounded-xl border-2 border-pink-200 text-pink-600 font-black text-lg hover:bg-pink-500 hover:text-white transition-all bg-white shadow-sm hover:scale-[1.02]">${lvl}</button>`).join('');
+                
+                // 檢查是否有任一等級有學習進度，如果有，顯示複習與測驗按鈕
+                let hasAnyProgress = false;
+                let currentSelectedLevel = modalState.level || LEVELS[0]; 
 
-            LEVELS.forEach(lvl => {
-                const docId = `${username}_${lvl}`;
-                if(allProgress[docId] && allProgress[docId].lastIndex > 0) hasAnyProgress = true;
-            });
+                LEVELS.forEach(lvl => {
+                    const docId = `${username}_${lvl}`;
+                    if(allProgress[docId] && allProgress[docId].lastIndex > 0) hasAnyProgress = true;
+                });
 
-            const actionContainer = document.getElementById('level-actions-container');
-            if (hasAnyProgress) {
-                actionContainer.classList.remove('hidden');
-                actionContainer.innerHTML = `
-                    <p class="text-xs text-center font-bold text-gray-400 mb-1">您已有學習紀錄，可進行隨堂測驗或複習 👇</p>
-                    <div class="flex gap-2">
-                        <select id="action-level-select" class="w-1/3 px-2 py-2 rounded-lg border border-gray-300 font-bold text-pink-600 focus:outline-none">
-                            ${LEVELS.map(lvl => `<option value="${lvl}" ${lvl === currentSelectedLevel ? 'selected' : ''}>${lvl}</option>`).join('')}
-                        </select>
-                        <button onclick="startQuiz('level', document.getElementById('action-level-select').value)" class="flex-1 py-2 rounded-lg font-black text-white bg-rose-500 hover:bg-rose-600 shadow-sm transition-all text-sm md:text-base">
-                            📝 模擬測驗
-                        </button>
-                        <button onclick="startEbbinghausReview(document.getElementById('action-level-select').value)" class="flex-1 py-2 rounded-lg font-black text-pink-700 bg-pink-100 hover:bg-pink-200 border border-pink-300 shadow-sm transition-all text-sm md:text-base">
-                            🧠 智能複習
-                        </button>
-                    </div>
-                `;
-            } else {
-                actionContainer.classList.add('hidden');
-                actionContainer.innerHTML = '';
-            }
+                const actionContainer = document.getElementById('level-actions-container');
+                if (hasAnyProgress) {
+                    actionContainer.classList.remove('hidden');
+                    actionContainer.innerHTML = `
+                        <p class="text-xs text-center font-bold text-gray-400 mb-1">您已有學習紀錄，可進行隨堂測驗或複習 👇</p>
+                        <div class="flex gap-2">
+                            <select id="action-level-select" class="w-1/3 px-2 py-2 rounded-lg border border-gray-300 font-bold text-pink-600 focus:outline-none">
+                                ${LEVELS.map(lvl => `<option value="${lvl}" ${lvl === currentSelectedLevel ? 'selected' : ''}>${lvl}</option>`).join('')}
+                            </select>
+                            <button onclick="startQuiz('level', document.getElementById('action-level-select').value)" class="flex-1 py-2 rounded-lg font-black text-white bg-rose-500 hover:bg-rose-600 shadow-sm transition-all text-sm md:text-base">
+                                📝 模擬測驗
+                            </button>
+                            <button onclick="startEbbinghausReview(document.getElementById('action-level-select').value)" class="flex-1 py-2 rounded-lg font-black text-pink-700 bg-pink-100 hover:bg-pink-200 border border-pink-300 shadow-sm transition-all text-sm md:text-base">
+                                🧠 智能複習
+                            </button>
+                        </div>
+                    `;
+                } else {
+                    actionContainer.classList.add('hidden');
+                    actionContainer.innerHTML = '';
+                }
 
-            openGlobalModal('level-select-modal');
+                openGlobalModal('level-select-modal');
+            } catch(e) { console.error("openLevelModal error", e); }
         };
 
         window.startLearning = (level) => {
-            const progressDocId = `${username}_${level}`;
-            const currentIndex = allProgress[progressDocId]?.lastIndex || 0;
-            
-            const levelWords = Object.values(allVocab).filter(v => v.level === level).sort((a,b) => a.index - b.index);
-            
-            // 每次抽 20 個單字
-            currentLearningBatch = levelWords.slice(currentIndex, currentIndex + 20);
-            
-            if(currentLearningBatch.length === 0) {
-                alert(`恭喜！您已學完 ${level} 的所有題庫單字！`);
-                return;
-            }
-            
-            currentPageIndex = 0;
-            isReviewMode = false;
-            modalState.level = level;
-            
-            document.getElementById('learning-modal-title-badge').innerText = `${level} (第 ${currentIndex + 1} ~ ${currentIndex + currentLearningBatch.length} 字)`;
-            
-            closeGlobalModal('level-select-modal');
-            renderLearningPage();
-            openGlobalModal('learning-modal');
+            try {
+                const progressDocId = `${username}_${level}`;
+                const currentIndex = allProgress[progressDocId]?.lastIndex || 0;
+                
+                const levelWords = Object.values(allVocab).filter(v => v.level === level).sort((a,b) => a.index - b.index);
+                
+                // 每次抽 20 個單字
+                currentLearningBatch = levelWords.slice(currentIndex, currentIndex + 20);
+                
+                if(currentLearningBatch.length === 0) {
+                    alert(`恭喜！您已學完 ${level} 的所有題庫單字！`);
+                    return;
+                }
+                
+                currentPageIndex = 0;
+                isReviewMode = false;
+                modalState.level = level;
+                
+                document.getElementById('learning-modal-title-badge').innerText = `${level} (第 ${currentIndex + 1} ~ ${currentIndex + currentLearningBatch.length} 字)`;
+                
+                closeGlobalModal('level-select-modal');
+                renderLearningPage();
+                openGlobalModal('learning-modal');
+            } catch(e) { console.error("startLearning error", e); }
         };
 
         // 艾賓浩斯智能複習
         window.startEbbinghausReview = (level) => {
-            const progressDocId = `${username}_${level}`;
-            const learnedCount = allProgress[progressDocId]?.lastIndex || 0;
-            const levelWords = Object.values(allVocab).filter(v => v.level === level).sort((a,b) => a.index - b.index);
-            const learnedWords = levelWords.slice(0, learnedCount);
+            try {
+                const progressDocId = `${username}_${level}`;
+                const learnedCount = allProgress[progressDocId]?.lastIndex || 0;
+                const levelWords = Object.values(allVocab).filter(v => v.level === level).sort((a,b) => a.index - b.index);
+                const learnedWords = levelWords.slice(0, learnedCount);
 
-            if(learnedWords.length === 0) {
-                alert(`您在 ${level} 尚無學習紀錄，請先進行學習！`);
-                return;
-            }
+                if(learnedWords.length === 0) {
+                    alert(`您在 ${level} 尚無學習紀錄，請先進行學習！`);
+                    return;
+                }
 
-            let reviewBatch = [];
-            // 邏輯：抽取 40% 最新, 30% 最久, 30% 中間 (總數 20)
-            const targetCount = 20;
-            if (learnedWords.length <= targetCount) {
-                reviewBatch = [...learnedWords];
-            } else {
-                const numNew = Math.floor(targetCount * 0.4); // 8
-                const numOld = Math.floor(targetCount * 0.3); // 6
-                const numMid = targetCount - numNew - numOld; // 6
+                let reviewBatch = [];
+                // 邏輯：抽取 40% 最新, 30% 最久, 30% 中間 (總數 20)
+                const targetCount = 20;
+                if (learnedWords.length <= targetCount) {
+                    reviewBatch = [...learnedWords];
+                } else {
+                    const numNew = Math.floor(targetCount * 0.4); // 8
+                    const numOld = Math.floor(targetCount * 0.3); // 6
+                    const numMid = targetCount - numNew - numOld; // 6
 
-                const newest = learnedWords.slice(-numNew);
-                const oldest = learnedWords.slice(0, numOld);
-                const middlePool = learnedWords.slice(numOld, learnedWords.length - numNew);
+                    const newest = learnedWords.slice(-numNew);
+                    const oldest = learnedWords.slice(0, numOld);
+                    const middlePool = learnedWords.slice(numOld, learnedWords.length - numNew);
+                    
+                    // 隨機抽中間
+                    const middleSelected = middlePool.sort(() => 0.5 - Math.random()).slice(0, numMid);
+                    
+                    reviewBatch = [...newest, ...oldest, ...middleSelected].sort((a,b) => a.index - b.index);
+                }
+
+                currentLearningBatch = reviewBatch;
+                currentPageIndex = 0;
+                isReviewMode = true; 
+                modalState.level = level;
                 
-                // 隨機抽中間
-                const middleSelected = middlePool.sort(() => 0.5 - Math.random()).slice(0, numMid);
+                document.getElementById('learning-modal-title-badge').innerText = `🧠 ${level} 智能複習 (${reviewBatch.length} 字)`;
                 
-                reviewBatch = [...newest, ...oldest, ...middleSelected].sort((a,b) => a.index - b.index);
-            }
-
-            currentLearningBatch = reviewBatch;
-            currentPageIndex = 0;
-            isReviewMode = true; 
-            modalState.level = level;
-            
-            document.getElementById('learning-modal-title-badge').innerText = `🧠 ${level} 智能複習 (${reviewBatch.length} 字)`;
-            
-            closeGlobalModal('level-select-modal');
-            closeGlobalModal('complete-modal');
-            renderLearningPage();
-            openGlobalModal('learning-modal');
+                closeGlobalModal('level-select-modal');
+                closeGlobalModal('complete-modal');
+                renderLearningPage();
+                openGlobalModal('learning-modal');
+            } catch(e) { console.error("startEbbinghausReview error", e); }
         };
 
         window.renderLearningPage = () => {
-            const start = currentPageIndex * 10;
-            const end = start + 10;
-            const pageWords = currentLearningBatch.slice(start, end);
-            
-            let html = '<div class="space-y-4 w-full px-1">';
-            
-            pageWords.forEach((wordObj, i) => {
-                const favId = `${username}_${wordObj.id}`;
-                const isFav = !!allFavorites[favId];
+            try {
+                const start = currentPageIndex * 10;
+                const end = start + 10;
+                const pageWords = currentLearningBatch.slice(start, end);
                 
-                const safeWord = escapeQuotes(wordObj.word);
-                const safeSentence = escapeQuotes(wordObj.sentence);
+                let html = '<div class="space-y-4 w-full px-1">';
                 
-                html += `
-                    <div class="bg-white p-4 md:p-5 rounded-2xl shadow-sm border border-pink-200 relative hover:shadow-md transition-shadow">
-                        <div class="absolute top-3 left-4 text-xs font-bold text-gray-400 bg-gray-50 px-2 py-0.5 rounded border border-gray-100"># ${wordObj.index}</div>
-                        <button onclick="toggleFavorite('${wordObj.id}', event)" class="absolute top-3 right-4 text-xl hover:scale-125 transition-transform" title="加入我的最愛">
-                            ${isFav ? '❤️' : '🤍'}
-                        </button>
-                        
-                        <div class="flex flex-col md:flex-row md:items-center gap-2 md:gap-4 mt-6 mb-3">
-                            <div class="flex items-center gap-3">
-                                <button onclick="playAudio('${safeWord}', event)" class="w-9 h-9 bg-pink-50 text-pink-600 rounded-full flex items-center justify-center hover:bg-pink-100 transition-colors shadow-sm shrink-0 border border-pink-200">
-                                    🔊
-                                </button>
-                                <h3 class="text-2xl font-black text-gray-800">${wordObj.word}</h3>
-                            </div>
-                            <div class="text-rose-600 font-bold ml-1 md:ml-2">
-                                <span class="text-gray-400 mr-1">${wordObj.pos}</span> ${wordObj.meaning}
-                            </div>
-                        </div>
-                        
-                        ${wordObj.sentence ? `
-                            <div class="bg-rose-50/50 rounded-xl p-3 flex items-start gap-3 border border-rose-100">
-                                <button onclick="playAudio('${safeSentence}', event)" class="w-7 h-7 bg-white text-rose-400 rounded-full flex items-center justify-center hover:bg-rose-50 transition-colors shadow-sm shrink-0 border border-rose-200 mt-0.5 text-xs">
-                                    🔊
-                                </button>
-                                <div class="flex flex-col gap-1">
-                                    <div class="text-gray-700 font-medium text-sm md:text-base">${wordObj.sentence}</div>
-                                    <div class="text-sm text-gray-500">${wordObj.translation}</div>
+                pageWords.forEach((wordObj, i) => {
+                    const favId = `${username}_${wordObj.id}`;
+                    const isFav = !!allFavorites[favId];
+                    
+                    const safeWord = escapeQuotes(wordObj.word);
+                    const safeSentence = escapeQuotes(wordObj.sentence);
+                    
+                    html += `
+                        <div class="bg-white p-4 md:p-5 rounded-2xl shadow-sm border border-pink-200 relative hover:shadow-md transition-shadow">
+                            <div class="absolute top-3 left-4 text-xs font-bold text-gray-400 bg-gray-50 px-2 py-0.5 rounded border border-gray-100"># ${wordObj.index}</div>
+                            <button onclick="toggleFavorite('${wordObj.id}', event)" class="absolute top-3 right-4 text-xl hover:scale-125 transition-transform" title="加入我的最愛">
+                                ${isFav ? '❤️' : '🤍'}
+                            </button>
+                            
+                            <div class="flex flex-col md:flex-row md:items-center gap-2 md:gap-4 mt-6 mb-3">
+                                <div class="flex items-center gap-3">
+                                    <button onclick="playAudio('${safeWord}', event)" class="w-9 h-9 bg-pink-50 text-pink-600 rounded-full flex items-center justify-center hover:bg-pink-100 transition-colors shadow-sm shrink-0 border border-pink-200">
+                                        🔊
+                                    </button>
+                                    <h3 class="text-2xl font-black text-gray-800">${wordObj.word}</h3>
+                                </div>
+                                <div class="text-rose-600 font-bold ml-1 md:ml-2">
+                                    <span class="text-gray-400 mr-1">${wordObj.pos}</span> ${wordObj.meaning}
                                 </div>
                             </div>
-                        ` : ''}
-                    </div>
-                `;
-            });
-            html += '</div>';
-            
-            try {
+                            
+                            ${wordObj.sentence ? `
+                                <div class="bg-rose-50/50 rounded-xl p-3 flex items-start gap-3 border border-rose-100">
+                                    <button onclick="playAudio('${safeSentence}', event)" class="w-7 h-7 bg-white text-rose-400 rounded-full flex items-center justify-center hover:bg-rose-50 transition-colors shadow-sm shrink-0 border border-rose-200 mt-0.5 text-xs">
+                                        🔊
+                                    </button>
+                                    <div class="flex flex-col gap-1">
+                                        <div class="text-gray-700 font-medium text-sm md:text-base">${wordObj.sentence}</div>
+                                        <div class="text-sm text-gray-500">${wordObj.translation}</div>
+                                    </div>
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+                });
+                html += '</div>';
+                
                 document.getElementById('learning-content').innerHTML = html;
-            } catch(e) { console.error(e); }
-            
-            // 更新分頁按鈕狀態
-            const totalPages = Math.ceil(currentLearningBatch.length / 10);
-            document.getElementById('learning-page-indicator').innerText = `頁次 ${currentPageIndex + 1} / ${totalPages}`;
-            
-            const btnPrev = document.getElementById('btn-prev-page');
-            const btnNext = document.getElementById('btn-next-page');
-            
-            if(currentPageIndex > 0) btnPrev.classList.remove('invisible');
-            else btnPrev.classList.add('invisible');
-            
-            if(currentPageIndex >= totalPages - 1) {
-                btnNext.innerText = '完成學習，進入測驗 ⚔️';
-                btnNext.classList.replace('bg-pink-500', 'bg-orange-500');
-                btnNext.classList.replace('hover:bg-pink-600', 'hover:bg-orange-600');
-            } else {
-                btnNext.innerText = '下一頁 ▶';
-                btnNext.classList.replace('bg-orange-500', 'bg-pink-500');
-                btnNext.classList.replace('hover:bg-orange-600', 'hover:bg-pink-600');
-            }
-            
-            document.getElementById('learning-content').scrollTop = 0;
+                
+                // 更新分頁按鈕狀態
+                const totalPages = Math.ceil(currentLearningBatch.length / 10);
+                document.getElementById('learning-page-indicator').innerText = `頁次 ${currentPageIndex + 1} / ${totalPages}`;
+                
+                const btnPrev = document.getElementById('btn-prev-page');
+                const btnNext = document.getElementById('btn-next-page');
+                
+                if(currentPageIndex > 0) btnPrev.classList.remove('invisible');
+                else btnPrev.classList.add('invisible');
+                
+                if(currentPageIndex >= totalPages - 1) {
+                    btnNext.innerText = '完成學習，進入測驗 ⚔️';
+                    btnNext.classList.replace('bg-pink-500', 'bg-orange-500');
+                    btnNext.classList.replace('hover:bg-pink-600', 'hover:bg-orange-600');
+                } else {
+                    btnNext.innerText = '下一頁 ▶';
+                    btnNext.classList.replace('bg-orange-500', 'bg-pink-500');
+                    btnNext.classList.replace('hover:bg-orange-600', 'hover:bg-pink-600');
+                }
+                
+                document.getElementById('learning-content').scrollTop = 0;
+            } catch(e) { console.error("renderLearningPage error", e); }
         };
 
         window.prevPage = () => {
@@ -1178,196 +1405,165 @@
             }
         };
 
-        // 使用設定好的女性/真人語音發音
-        window.playAudio = (text, e) => {
-            if(e) e.stopPropagation();
-            if(!text) return;
-            
-            if ('speechSynthesis' in window) {
-                const utterance = new SpeechSynthesisUtterance(text);
-                utterance.lang = 'en-US';
-                if (femaleVoice) {
-                    utterance.voice = femaleVoice;
-                }
-                // 稍微調整語速和音調讓它更自然
-                utterance.rate = 0.9;
-                utterance.pitch = 1.1; 
-                
-                speechSynthesis.speak(utterance);
-            }
-        };
-
-        window.toggleFavorite = async (wordId, e) => {
-            if(e) e.stopPropagation();
-            const favId = `${username}_${wordId}`;
-            try {
-                if(allFavorites[favId]) {
-                    await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'VocabFavorites', favId));
-                } else {
-                    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'VocabFavorites', favId), {
-                        user: username,
-                        wordId: wordId,
-                        addedAt: new Date().toISOString()
-                    });
-                }
-            } catch(err) { console.error(err); }
-        };
-
         // ==========================================
         //  情境填空測驗 (Quiz Mode) 邏輯
         // ==========================================
         window.startQuiz = (mode, level) => {
-            let pool = [];
-            if (mode === 'post_learning') {
-                // 剛學完的 20 個字
-                pool = [...currentLearningBatch];
-            } else if (mode === 'level') {
-                // 從該 Level 已學過的挑選 20 題
-                const progressDocId = `${username}_${level}`;
-                const learnedCount = allProgress[progressDocId]?.lastIndex || 0;
-                const levelWords = Object.values(allVocab).filter(v => v.level === level).sort((a,b) => a.index - b.index);
-                pool = levelWords.slice(0, learnedCount);
-                if (pool.length < 4) {
-                    alert("已學習的單字數量不足，無法進行測驗！（至少需要 4 個單字）");
-                    return;
+            try {
+                let pool = [];
+                if (mode === 'post_learning') {
+                    // 剛學完的 20 個字
+                    pool = [...currentLearningBatch];
+                } else if (mode === 'level') {
+                    // 從該 Level 已學過的挑選 20 題
+                    const progressDocId = `${username}_${level}`;
+                    const learnedCount = allProgress[progressDocId]?.lastIndex || 0;
+                    const levelWords = Object.values(allVocab).filter(v => v.level === level).sort((a,b) => a.index - b.index);
+                    pool = levelWords.slice(0, learnedCount);
+                    if (pool.length < 4) {
+                        alert("已學習的單字數量不足，無法進行測驗！（至少需要 4 個單字）");
+                        return;
+                    }
+                    // 隨機抽最多 20 題
+                    pool = pool.sort(() => 0.5 - Math.random()).slice(0, 20);
                 }
-                // 隨機抽最多 20 題
-                pool = pool.sort(() => 0.5 - Math.random()).slice(0, 20);
-            }
 
-            quizState = {
-                level: level,
-                mode: mode,
-                questions: pool.sort(() => 0.5 - Math.random()), // 打亂出題順序
-                currentIndex: 0,
-                correct: 0,
-                wrongWords: []
-            };
+                quizState = {
+                    level: level,
+                    mode: mode,
+                    questions: pool.sort(() => 0.5 - Math.random()), // 打亂出題順序
+                    currentIndex: 0,
+                    correct: 0,
+                    wrongWords: []
+                };
 
-            closeGlobalModal('learning-modal');
-            closeGlobalModal('complete-modal');
-            closeGlobalModal('level-select-modal');
-            
-            renderQuizQuestion();
-            openGlobalModal('quiz-modal');
+                closeGlobalModal('learning-modal');
+                closeGlobalModal('complete-modal');
+                closeGlobalModal('level-select-modal');
+                
+                renderQuizQuestion();
+                openGlobalModal('quiz-modal');
+            } catch(e) { console.error("startQuiz error", e); }
         };
 
         window.renderQuizQuestion = () => {
-            const total = quizState.questions.length;
-            const current = quizState.currentIndex;
-            
-            // Update Progress bar
-            const pct = (current / total) * 100;
-            document.getElementById('quiz-progress-bar').style.width = `${pct}%`;
-            document.getElementById('quiz-progress-badge').innerText = `第 ${current + 1} / ${total} 題`;
-
-            const wordObj = quizState.questions[current];
-            const correctWordStr = wordObj.word;
-            const safeCorrectWord = escapeQuotes(correctWordStr);
-
-            // Generate 3 wrong options from ALL vocab
-            let allOthers = Object.values(allVocab).filter(v => v.word !== correctWordStr);
-            allOthers = allOthers.sort(() => 0.5 - Math.random()).slice(0, 3);
-            
-            const options = [wordObj, ...allOthers].sort(() => 0.5 - Math.random());
-
-            let questionHtml = '';
-            if (wordObj.sentence) {
-                // 挖空改為連續底線 (實線效果)
-                const regex = new RegExp(`\\b${correctWordStr}\\b`, 'gi');
-                const blankedSentence = wordObj.sentence.replace(regex, '________');
-                
-                questionHtml = `
-                    <div class="text-sm font-bold text-rose-500 mb-2">請選出適合填入空格的單字：</div>
-                    <div id="quiz-sentence-display" class="text-2xl md:text-4xl font-black text-gray-800 leading-relaxed mb-4 px-4 tracking-wide">${blankedSentence}</div>
-                    <div class="text-gray-500 font-bold bg-white inline-block px-5 py-2 rounded-full border border-rose-100 shadow-sm text-lg">💡 提示：${wordObj.meaning}</div>
-                    
-                    <div id="quiz-explanation" class="hidden mt-6 bg-pink-50 p-6 rounded-2xl border border-pink-200 text-left mx-auto max-w-2xl">
-                        <div class="text-xl md:text-2xl font-black text-rose-600 mb-3">${wordObj.sentence}</div>
-                        <div class="text-md md:text-lg text-gray-700 font-bold mb-1">${wordObj.translation}</div>
-                    </div>
-                `;
-            } else {
-                questionHtml = `
-                    <div class="text-sm font-bold text-rose-500 mb-2">請選出符合以下意思的單字：</div>
-                    <div class="text-3xl md:text-5xl font-black text-gray-800 leading-relaxed mb-4 px-4">${wordObj.meaning}</div>
-                    
-                    <div id="quiz-explanation" class="hidden mt-6 bg-pink-50 p-6 rounded-2xl border border-pink-200">
-                        <div class="text-xl md:text-2xl font-black text-rose-600">${wordObj.word}</div>
-                    </div>
-                `;
-            }
-
-            const optionsHtml = `
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8 w-full max-w-2xl mx-auto">
-                    ${options.map(opt => `
-                        <button onclick="checkQuizAnswer(this, '${escapeQuotes(opt.word)}', '${safeCorrectWord}')" data-word="${escapeQuotes(opt.word)}" class="quiz-option-btn py-5 px-6 rounded-2xl bg-white border-2 border-rose-200 text-gray-700 font-black text-xl md:text-2xl shadow-sm hover:bg-rose-50 hover:border-rose-400 hover:scale-[1.02] transition-all">
-                            ${opt.word}
-                        </button>
-                    `).join('')}
-                </div>
-            `;
-
-            const nextBtnHtml = `
-                <div id="quiz-next-btn-container" class="hidden mt-10">
-                    <button onclick="nextQuizQuestion()" class="px-10 py-4 bg-rose-500 text-white font-black rounded-xl hover:bg-rose-600 shadow-md text-xl animate-bounce">下一題 ▶</button>
-                </div>
-            `;
-
             try {
+                const total = quizState.questions.length;
+                const current = quizState.currentIndex;
+                
+                // Update Progress bar
+                const pct = (current / total) * 100;
+                document.getElementById('quiz-progress-bar').style.width = `${pct}%`;
+                document.getElementById('quiz-progress-badge').innerText = `第 ${current + 1} / ${total} 題`;
+
+                const wordObj = quizState.questions[current];
+                const correctWordStr = wordObj.word;
+                const safeCorrectWord = escapeQuotes(correctWordStr);
+
+                // Generate 3 wrong options from ALL vocab
+                let allOthers = Object.values(allVocab).filter(v => v.word !== correctWordStr);
+                allOthers = allOthers.sort(() => 0.5 - Math.random()).slice(0, 3);
+                
+                const options = [wordObj, ...allOthers].sort(() => 0.5 - Math.random());
+
+                let questionHtml = '';
+                if (wordObj.sentence) {
+                    // 挖空改為連續底線 (實線效果)
+                    const regex = new RegExp(`\\b${correctWordStr}\\b`, 'gi');
+                    const blankedSentence = wordObj.sentence.replace(regex, '________');
+                    
+                    questionHtml = `
+                        <div class="text-sm font-bold text-rose-500 mb-2">請選出適合填入空格的單字：</div>
+                        <div id="quiz-sentence-display" class="text-2xl md:text-4xl font-black text-gray-800 leading-relaxed mb-4 px-4 tracking-wide">${blankedSentence}</div>
+                        <div class="text-gray-500 font-bold bg-white inline-block px-5 py-2 rounded-full border border-rose-100 shadow-sm text-lg">💡 提示：${wordObj.meaning}</div>
+                        
+                        <div id="quiz-explanation" class="hidden mt-6 bg-pink-50 p-6 rounded-2xl border border-pink-200 text-left mx-auto max-w-2xl w-full shadow-inner">
+                            <div class="text-xl md:text-2xl font-black text-rose-600 mb-3 leading-relaxed">${wordObj.sentence}</div>
+                            <div class="text-md md:text-lg text-gray-700 font-bold mb-1">${wordObj.translation}</div>
+                        </div>
+                    `;
+                } else {
+                    questionHtml = `
+                        <div class="text-sm font-bold text-rose-500 mb-2">請選出符合以下意思的單字：</div>
+                        <div class="text-3xl md:text-5xl font-black text-gray-800 leading-relaxed mb-4 px-4">${wordObj.meaning}</div>
+                        
+                        <div id="quiz-explanation" class="hidden mt-6 bg-pink-50 p-6 rounded-2xl border border-pink-200 w-full shadow-inner">
+                            <div class="text-xl md:text-2xl font-black text-rose-600">${wordObj.word}</div>
+                        </div>
+                    `;
+                }
+
+                const optionsHtml = `
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8 w-full max-w-2xl mx-auto">
+                        ${options.map(opt => `
+                            <button onclick="checkQuizAnswer(this, '${escapeQuotes(opt.word)}', '${safeCorrectWord}')" data-word="${escapeQuotes(opt.word)}" class="quiz-option-btn py-5 px-6 rounded-2xl bg-white border-2 border-rose-200 text-gray-700 font-black text-xl md:text-2xl shadow-sm hover:bg-rose-50 hover:border-rose-400 hover:scale-[1.02] transition-all">
+                                ${opt.word}
+                            </button>
+                        `).join('')}
+                    </div>
+                `;
+
+                const nextBtnHtml = `
+                    <div id="quiz-next-btn-container" class="hidden mt-10">
+                        <button onclick="nextQuizQuestion()" class="px-10 py-4 bg-rose-500 text-white font-black rounded-xl hover:bg-rose-600 shadow-md text-xl animate-bounce">下一題 ▶</button>
+                    </div>
+                `;
+
                 document.getElementById('quiz-question-container').innerHTML = questionHtml + optionsHtml + nextBtnHtml;
-            } catch(e) { console.error(e); }
+            } catch(e) { console.error("renderQuizQuestion error", e); }
         };
 
         window.checkQuizAnswer = async (btn, selectedWord, correctWord) => {
-            // Disable all buttons
-            const btns = document.querySelectorAll('.quiz-option-btn');
-            btns.forEach(b => {
-                b.disabled = true;
-                b.classList.remove('hover:bg-rose-50', 'hover:border-rose-400', 'hover:scale-[1.02]');
-            });
+            try {
+                // Disable all buttons
+                const btns = document.querySelectorAll('.quiz-option-btn');
+                btns.forEach(b => {
+                    b.disabled = true;
+                    b.classList.remove('hover:bg-rose-50', 'hover:border-rose-400', 'hover:scale-[1.02]');
+                });
 
-            const isCorrect = (selectedWord === correctWord);
-            const currentObj = quizState.questions[quizState.currentIndex];
+                const isCorrect = (selectedWord === correctWord);
+                const currentObj = quizState.questions[quizState.currentIndex];
 
-            if (isCorrect) {
-                btn.classList.replace('bg-white', 'bg-green-400');
-                btn.classList.replace('border-rose-200', 'border-green-500');
-                btn.classList.replace('text-gray-700', 'text-white');
-                quizState.correct++;
-            } else {
-                btn.classList.replace('bg-white', 'bg-red-500');
-                btn.classList.replace('border-rose-200', 'border-red-600');
-                btn.classList.replace('text-gray-700', 'text-white');
-                btn.classList.add('shake');
+                if (isCorrect) {
+                    btn.classList.replace('bg-white', 'bg-green-400');
+                    btn.classList.replace('border-rose-200', 'border-green-500');
+                    btn.classList.replace('text-gray-700', 'text-white');
+                    quizState.correct++;
+                } else {
+                    btn.classList.replace('bg-white', 'bg-red-500');
+                    btn.classList.replace('border-rose-200', 'border-red-600');
+                    btn.classList.replace('text-gray-700', 'text-white');
+                    btn.classList.add('shake');
+                    
+                    const correctBtn = Array.from(btns).find(b => b.dataset.word === correctWord);
+                    if (correctBtn) {
+                        correctBtn.classList.replace('bg-white', 'bg-green-400');
+                        correctBtn.classList.replace('border-rose-200', 'border-green-500');
+                        correctBtn.classList.replace('text-gray-700', 'text-white');
+                    }
+
+                    if (!quizState.wrongWords.find(w => w.id === currentObj.id)) {
+                        quizState.wrongWords.push(currentObj);
+                    }
+                }
+
+                // 顯示解析與下一題按鈕
+                const exp = document.getElementById('quiz-explanation');
+                if (exp) exp.classList.remove('hidden');
                 
-                const correctBtn = Array.from(btns).find(b => b.dataset.word === correctWord);
-                if (correctBtn) {
-                    correctBtn.classList.replace('bg-white', 'bg-green-400');
-                    correctBtn.classList.replace('border-rose-200', 'border-green-500');
-                    correctBtn.classList.replace('text-gray-700', 'text-white');
+                const senDisp = document.getElementById('quiz-sentence-display');
+                if (senDisp && currentObj.sentence) senDisp.classList.add('hidden'); // 隱藏挖空，直接看解析
+                
+                document.getElementById('quiz-next-btn-container').classList.remove('hidden');
+
+                // 朗讀完整句子或單字
+                if (currentObj.sentence) {
+                    playAudio(currentObj.sentence, null);
+                } else {
+                    playAudio(correctWord, null);
                 }
-
-                if (!quizState.wrongWords.find(w => w.id === currentObj.id)) {
-                    quizState.wrongWords.push(currentObj);
-                }
-            }
-
-            // 顯示解析與下一題按鈕
-            const exp = document.getElementById('quiz-explanation');
-            if (exp) exp.classList.remove('hidden');
-            
-            const senDisp = document.getElementById('quiz-sentence-display');
-            if (senDisp && currentObj.sentence) senDisp.classList.add('hidden'); // 隱藏挖空
-            
-            document.getElementById('quiz-next-btn-container').classList.remove('hidden');
-
-            // 朗讀完整句子或單字
-            if (currentObj.sentence) {
-                playAudio(currentObj.sentence, null);
-            } else {
-                playAudio(correctWord, null);
-            }
+            } catch(e) { console.error("checkQuizAnswer error", e); }
         };
 
         window.nextQuizQuestion = () => {
@@ -1433,30 +1629,35 @@
             let icon = '🎯';
             let msg = '再接再厲！錯題已經幫您整理到集中營囉。';
             
-            if (score === total) {
+            if (score >= total) {
                 grade = 'S 級'; icon = '👑'; msg = '太神啦！完美無瑕！完全掌握。';
-            } else if (score >= total - 2) {
+            } else if (score >= total - 3) {
                 grade = 'A 級'; icon = '🥇'; msg = '非常優秀！只差一點點就完美了。';
             } else if (score >= total * 0.6) {
                 grade = 'B 級'; icon = '🥈'; msg = '表現不錯！請去錯題集中營複習一下喔。';
             }
 
-            const progressDocId = `${username}_${quizState.level}`;
-            const currentBest = allProgress[progressDocId]?.bestScore || 0;
-            if (score > currentBest) {
-                try {
-                    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'VocabProgress', progressDocId), {
-                        bestScore: score,
-                        updatedAt: new Date().toISOString()
-                    }, { merge: true });
-                    msg += '<br><span class="text-rose-500 font-bold mt-2 inline-block">🚀 最高紀錄已更新！</span>';
-                } catch(e) {}
+            // If it's a Level Quiz (not just recent batch), update the best score
+            if (quizState.mode === 'level' || quizState.mode === 'post_learning') {
+                const progressDocId = `${username}_${quizState.level}`;
+                const currentBest = allProgress[progressDocId]?.bestScore || 0;
+                if (score > currentBest) {
+                    try {
+                        await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'VocabProgress', progressDocId), {
+                            bestScore: score,
+                            updatedAt: new Date().toISOString()
+                        }, { merge: true });
+                        msg += '<br><span class="text-rose-500 font-bold mt-2 inline-block">🚀 最高紀錄已更新！</span>';
+                    } catch(e) {}
+                }
             }
 
-            document.getElementById('quiz-result-icon').innerText = icon;
-            document.getElementById('quiz-result-grade').innerText = grade;
-            document.getElementById('quiz-result-score').innerText = `答對 ${correct} / ${total} 題`;
-            document.getElementById('quiz-result-msg').innerHTML = msg;
+            try {
+                document.getElementById('quiz-result-icon').innerText = icon;
+                document.getElementById('quiz-result-grade').innerText = grade;
+                document.getElementById('quiz-result-score').innerText = `答對 ${correct} / ${total} 題`;
+                document.getElementById('quiz-result-msg').innerHTML = msg;
+            } catch(e) {}
 
             closeGlobalModal('quiz-modal');
             openGlobalModal('quiz-result-modal');
@@ -1466,113 +1667,115 @@
         //  錯題集中營 (Weakness Camp) 與 成績總覽 邏輯
         // ==========================================
         window.openWeaknessCamp = () => {
-            const container = document.getElementById('weakness-content');
-            const myWeaknesses = Object.values(allWeakness).filter(w => w.user === username);
-            
-            if(myWeaknesses.length === 0) {
-                container.innerHTML = `
-                    <div class="flex flex-col items-center justify-center py-16 text-gray-500">
-                        <div class="text-6xl mb-6 drop-shadow-md">🎉</div>
-                        <h3 class="text-2xl font-black text-rose-500 drop-shadow-sm">太棒了！目前沒有未記熟的錯題！</h3>
-                        <p class="text-md mt-2 font-bold text-gray-400">繼續保持這個氣勢，多做測驗吧 🚀</p>
-                    </div>
-                `;
-            } else {
-                // 依照 Level 分類
-                const weakByLevel = {};
-                LEVELS.forEach(l => weakByLevel[l] = []);
-                myWeaknesses.forEach(w => {
-                    if (weakByLevel[w.wordObj.level]) weakByLevel[w.wordObj.level].push(w);
-                });
+            try {
+                const container = document.getElementById('weakness-content');
+                const myWeaknesses = Object.values(allWeakness).filter(w => w.user === username);
+                
+                if(myWeaknesses.length === 0) {
+                    container.innerHTML = `
+                        <div class="flex flex-col items-center justify-center py-16 text-gray-500">
+                            <div class="text-6xl mb-6 drop-shadow-md">🎉</div>
+                            <h3 class="text-2xl font-black text-rose-500 drop-shadow-sm">太棒了！目前沒有錯題！</h3>
+                            <p class="text-md mt-2 font-bold text-gray-400">繼續保持這個氣勢，多做測驗吧 🚀</p>
+                        </div>
+                    `;
+                } else {
+                    // 依照 Level 分類
+                    const weakByLevel = {};
+                    LEVELS.forEach(l => weakByLevel[l] = []);
+                    myWeaknesses.forEach(w => {
+                        if (weakByLevel[w.wordObj.level]) weakByLevel[w.wordObj.level].push(w);
+                    });
 
-                let html = '<div class="space-y-8">';
-                LEVELS.forEach(lvl => {
-                    const weakWords = weakByLevel[lvl];
-                    if (weakWords.length > 0) {
-                        html += `
-                            <div>
-                                <h3 class="text-xl font-black text-red-600 mb-4 border-b-2 border-red-200 pb-2 pl-2 border-l-4 border-l-red-500">${lvl} <span class="text-sm font-bold text-gray-400 ml-2">共 ${weakWords.length} 題</span></h3>
-                                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        `;
-                        
-                        weakWords.forEach(weak => {
-                            const w = weak.wordObj;
-                            const safeWord = escapeQuotes(w.word);
-                            const safeSentence = escapeQuotes(w.sentence);
-
+                    let html = '<div class="space-y-8">';
+                    LEVELS.forEach(lvl => {
+                        const weakWords = weakByLevel[lvl];
+                        if (weakWords.length > 0) {
                             html += `
-                                <div class="rounded-2xl p-5 shadow-sm border-2 border-red-200 bg-red-50/50 relative flex flex-col hover:shadow-md transition-shadow group">
-                                    <div class="flex items-center gap-3 mt-2 mb-3">
-                                        <button onclick="playAudio('${safeWord}', event)" class="w-8 h-8 bg-white text-red-500 rounded-full flex items-center justify-center hover:bg-red-100 transition-colors shadow-sm shrink-0 border border-red-200">
-                                            🔊
-                                        </button>
-                                        <h4 class="font-black text-gray-800 text-xl md:text-2xl leading-tight">${w.word}</h4>
-                                    </div>
-                                    
-                                    <div class="text-red-700 font-bold mb-3">
-                                        <span class="text-gray-500 mr-1">${w.pos}</span>${w.meaning}
-                                    </div>
-                                    
-                                    ${w.sentence ? `
-                                        <div class="bg-white p-3 rounded-xl border border-red-100 mb-2 text-sm flex gap-2">
-                                            <button onclick="playAudio('${safeSentence}', event)" class="w-6 h-6 bg-red-50 text-red-400 rounded-full flex items-center justify-center hover:bg-red-100 transition-colors shrink-0 text-[10px] mt-0.5">🔊</button>
-                                            <div>
-                                                <div class="text-gray-700 font-medium mb-1">${w.sentence}</div>
-                                                <div class="text-gray-500 text-xs">${w.translation}</div>
-                                            </div>
-                                        </div>
-                                    ` : ''}
-                                </div>
+                                <div>
+                                    <h3 class="text-xl font-black text-red-600 mb-4 border-b-2 border-red-200 pb-2 pl-2 border-l-4 border-l-red-500">${lvl} <span class="text-sm font-bold text-gray-400 ml-2">共 ${weakWords.length} 題</span></h3>
+                                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             `;
-                        });
-                        
-                        html += `</div></div>`;
-                    }
-                });
-                html += '</div>';
-                try {
+                            
+                            weakWords.forEach(weak => {
+                                const w = weak.wordObj;
+                                const safeWord = escapeQuotes(w.word);
+                                const safeSentence = escapeQuotes(w.sentence);
+
+                                html += `
+                                    <div class="rounded-2xl p-5 shadow-sm border-2 border-red-200 bg-red-50/50 relative flex flex-col hover:shadow-md transition-shadow group">
+                                        <div class="flex items-center gap-3 mt-2 mb-3">
+                                            <button onclick="playAudio('${safeWord}', event)" class="w-8 h-8 bg-white text-red-500 rounded-full flex items-center justify-center hover:bg-red-100 transition-colors shadow-sm shrink-0 border border-red-200">
+                                                🔊
+                                            </button>
+                                            <h4 class="font-black text-gray-800 text-xl md:text-2xl leading-tight">${w.word}</h4>
+                                        </div>
+                                        
+                                        <div class="text-red-700 font-bold mb-3">
+                                            <span class="text-gray-500 mr-1">${w.pos}</span>${w.meaning}
+                                        </div>
+                                        
+                                        ${w.sentence ? `
+                                            <div class="bg-white p-3 rounded-xl border border-red-100 mb-2 text-sm flex gap-2">
+                                                <button onclick="playAudio('${safeSentence}', event)" class="w-6 h-6 bg-red-50 text-red-400 rounded-full flex items-center justify-center hover:bg-red-100 transition-colors shrink-0 text-[10px] mt-0.5">🔊</button>
+                                                <div>
+                                                    <div class="text-gray-700 font-medium mb-1">${w.sentence}</div>
+                                                    <div class="text-gray-500 text-xs">${w.translation}</div>
+                                                </div>
+                                            </div>
+                                        ` : ''}
+                                    </div>
+                                `;
+                            });
+                            
+                            html += `</div></div>`;
+                        }
+                    });
+                    html += '</div>';
                     container.innerHTML = html;
-                } catch(e) { console.error(e); }
-            }
-            
-            closeGlobalModal('quiz-result-modal'); 
-            openGlobalModal('weakness-modal');
+                }
+                
+                closeGlobalModal('quiz-result-modal'); 
+                openGlobalModal('weakness-modal');
+            } catch(e) { console.error("openWeaknessCamp error", e); }
         };
 
         window.openScoreBoard = () => {
-            const header = document.getElementById('score-board-header');
-            const tbody = document.getElementById('score-board-body');
-            if(!header || !tbody) return;
-            
-            let headerHtml = `<th class="p-3 bg-indigo-100 sticky left-0 z-10">學習者</th>`;
-            LEVELS.forEach(lvl => headerHtml += `<th class="p-3 whitespace-nowrap">${lvl}</th>`);
-            header.innerHTML = headerHtml;
-
-            let bodyHtml = '';
-            globalUsers.forEach(u => {
-                const dispName = usersProfile[u]?.nickname || u;
-                bodyHtml += `<tr class="hover:bg-indigo-50 transition-colors">`;
-                bodyHtml += `<td class="p-3 font-black text-gray-800 bg-white sticky left-0 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] flex items-center gap-2">
-                                <div class="${getUserColor(u)} w-6 h-6 rounded-full flex items-center justify-center text-[10px] shadow-sm">${getAvatarChar(u)}</div>
-                                ${dispName}
-                             </td>`;
+            try {
+                const header = document.getElementById('score-board-header');
+                const tbody = document.getElementById('score-board-body');
+                if(!header || !tbody) return;
                 
-                LEVELS.forEach(lvl => {
-                    const score = allProgress[`${u}_${lvl}`]?.bestScore;
-                    if (score !== undefined) {
-                        let colorClass = 'text-gray-600 font-bold';
-                        if (score >= 20) colorClass = 'text-rose-600 font-black';
-                        else if (score >= 16) colorClass = 'text-green-600 font-black';
-                        bodyHtml += `<td class="p-3 ${colorClass}">${score} / 20</td>`;
-                    } else {
-                        bodyHtml += `<td class="p-3 text-gray-300">-</td>`;
-                    }
-                });
-                bodyHtml += `</tr>`;
-            });
-            tbody.innerHTML = bodyHtml;
+                let headerHtml = `<th class="p-3 bg-indigo-100 sticky left-0 z-10">學習者</th>`;
+                LEVELS.forEach(lvl => headerHtml += `<th class="p-3 whitespace-nowrap">${lvl}</th>`);
+                header.innerHTML = headerHtml;
 
-            openGlobalModal('score-board-modal');
+                let bodyHtml = '';
+                globalUsers.forEach(u => {
+                    const dispName = usersProfile[u]?.nickname || u;
+                    bodyHtml += `<tr class="hover:bg-indigo-50 transition-colors">`;
+                    bodyHtml += `<td class="p-3 font-black text-gray-800 bg-white sticky left-0 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] flex items-center gap-2">
+                                    <div class="${getUserColor(u)} w-6 h-6 rounded-full flex items-center justify-center text-[10px] shadow-sm">${getAvatarChar(u)}</div>
+                                    ${dispName}
+                                 </td>`;
+                    
+                    LEVELS.forEach(lvl => {
+                        const score = allProgress[`${u}_${lvl}`]?.bestScore;
+                        if (score !== undefined) {
+                            let colorClass = 'text-gray-600 font-bold';
+                            if (score >= 20) colorClass = 'text-rose-600 font-black';
+                            else if (score >= 16) colorClass = 'text-green-600 font-black';
+                            bodyHtml += `<td class="p-3 ${colorClass}">${score} / 20</td>`;
+                        } else {
+                            bodyHtml += `<td class="p-3 text-gray-300">-</td>`;
+                        }
+                    });
+                    bodyHtml += `</tr>`;
+                });
+                tbody.innerHTML = bodyHtml;
+
+                openGlobalModal('score-board-modal');
+            } catch(e) { console.error("openScoreBoard error", e); }
         };
 
         // ==========================================
@@ -1664,8 +1867,12 @@
             unsubVocab = onSnapshot(vocabCol, (snap) => {
                 allVocab = {};
                 snap.forEach(docSnap => allVocab[docSnap.id] = docSnap.data());
-                if(username && document.getElementById('progress-modal') && !document.getElementById('progress-modal').classList.contains('hidden')) {
-                    try { window.openProgressModal(); } catch(e) { console.error(e); }
+                if(username) {
+                    try {
+                        const progressModal = document.getElementById('progress-modal');
+                        if(progressModal && !progressModal.classList.contains('hidden')) window.openProgressModal();
+                        window.renderMainContent(); // Ensure calendar re-renders if needed
+                    } catch(e) {}
                 }
             }, errHandler);
 
@@ -1776,7 +1983,7 @@
             }
         };
 
-        // Ensure initialization runs after DOM is fully parsed
+        // 確保 DOM 渲染完畢後再執行初始化
         setTimeout(initApp, 100);
 
     </script>
