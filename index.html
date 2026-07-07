@@ -106,7 +106,7 @@
         const appData = JSON.parse(appDataRaw);
         
         const EXAM_DATE = new Date(appData.EXAM_DATE);
-        const LEVELS = appData.LEVELS;
+        const LEVELS = appData.LEVELS || [];
 
         const USER_COLORS = [
             'bg-[#f472b6] text-white', 'bg-[#fb7185] text-white', 'bg-[#e879f9] text-white',
@@ -145,8 +145,7 @@
         let currentYear = new Date().getFullYear();
         let currentMonth = new Date().getMonth(); 
         
-        // 學習模式分頁狀態
-        let currentLearningBatch = []; // 每次改為 20 個
+        let currentLearningBatch = []; // 每次 20 個
         let currentPageIndex = 0;      
         let isReviewMode = false;      
 
@@ -160,15 +159,19 @@
         //  輔助工具函式
         // ==========================================
         const getDaysLeft = (targetDateStr) => {
+            if (!targetDateStr) return 0;
             const now = new Date();
             now.setHours(0,0,0,0);
             const target = new Date(targetDateStr);
+            if(isNaN(target.getTime())) return 0;
             target.setHours(0,0,0,0);
             return Math.ceil((target - now) / (1000 * 60 * 60 * 24));
         };
 
         const formatDate = (date) => {
+            if (!date) return '';
             const d = new Date(date);
+            if (isNaN(d.getTime())) return '';
             return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
         };
 
@@ -180,8 +183,9 @@
         };
 
         const getAvatarChar = (u) => {
+            if (!u) return '?';
             if(usersProfile[u] && usersProfile[u].nickname) return usersProfile[u].nickname.charAt(0);
-            return u ? u.charAt(0) : '?';
+            return u.charAt(0);
         };
 
         const getCircleNum = (idx) => {
@@ -197,8 +201,8 @@
         // 初始化與尋找女性/真人語音
         const initVoice = () => {
             if (!('speechSynthesis' in window)) return;
-            const voices = speechSynthesis.getVoices();
-            if (voices.length === 0) return; // Wait for onvoiceschanged
+            const voices = window.speechSynthesis.getVoices();
+            if (voices.length === 0) return; 
             femaleVoice = voices.find(v => v.lang.startsWith('en') && v.name.includes('Google US English')) ||
                           voices.find(v => v.lang.startsWith('en') && v.name.includes('Samantha')) ||
                           voices.find(v => v.lang.startsWith('en') && v.name.includes('Zira')) ||
@@ -206,9 +210,10 @@
                           voices.find(v => v.lang.startsWith('en-US')) || 
                           voices.find(v => v.lang.startsWith('en')) || voices[0];
         };
+        
         if ('speechSynthesis' in window) {
             window.speechSynthesis.onvoiceschanged = initVoice;
-            initVoice(); // Try immediately
+            initVoice(); 
         }
 
         // 統一發音管理
@@ -217,10 +222,8 @@
             if(!text) return;
             
             if ('speechSynthesis' in window) {
-                // 取消正在播放的聲音，避免佇列卡住
                 window.speechSynthesis.cancel(); 
-                
-                if (!femaleVoice) initVoice(); // 雙重確認語音已載入
+                if (!femaleVoice) initVoice(); 
                 
                 const utterance = new SpeechSynthesisUtterance(text);
                 utterance.lang = 'en-US';
@@ -229,7 +232,6 @@
                 }
                 utterance.rate = 0.9;
                 utterance.pitch = 1.1; 
-                
                 window.speechSynthesis.speak(utterance);
             }
         };
@@ -247,6 +249,7 @@
         window.renderSetup = () => {
             try {
                 const container = document.getElementById('view-container');
+                if(!container) return;
                 const currentConfig = getStoredConfig() || {};
                 container.innerHTML = `
                     <div class="flex-1 flex flex-col items-center justify-center p-6 relative z-10 overflow-y-auto">
@@ -274,6 +277,9 @@
         window.renderLogin = () => {
             try {
                 const container = document.getElementById('view-container');
+                if(!container) return;
+                const safeUsers = globalUsers || [];
+                
                 container.innerHTML = `
                     <div class="flex-1 flex flex-col items-center justify-center p-6 relative z-10 overflow-y-auto">
                         <div class="glass-panel p-8 md:p-12 rounded-[2.5rem] shadow-2xl z-10 w-[36rem] max-w-[95vw] text-center border-4 border-pink-300 relative overflow-hidden">
@@ -289,8 +295,8 @@
                             <div class="bg-white/60 p-6 rounded-3xl border border-pink-200 mb-6 shadow-inner">
                                 <p class="text-sm text-pink-600 font-bold mb-3">👇 點擊你的暱稱登入 👇</p>
                                 <div class="flex flex-wrap justify-center gap-3">
-                                    ${globalUsers.length > 0 ? 
-                                        globalUsers.map(u => {
+                                    ${safeUsers.length > 0 ? 
+                                        safeUsers.map(u => {
                                             const dispName = usersProfile[u]?.nickname || u;
                                             return `<button onclick="initiateLogin('${u}')" class="flex items-center gap-2 text-md font-bold bg-white border-2 border-pink-200 text-pink-700 hover:bg-pink-50 hover:scale-105 py-1.5 pl-2 pr-4 rounded-xl shadow-sm transition-all">
                                                 <div class="${getUserColor(u)} w-8 h-8 rounded-full flex items-center justify-center text-sm font-black shadow-sm border-2 border-white shrink-0">${getAvatarChar(u)}</div>
@@ -316,6 +322,8 @@
         window.renderMain = () => {
             try {
                 const container = document.getElementById('view-container');
+                if(!container) return;
+                
                 container.innerHTML = `
                     <div class="bg-white/80 backdrop-blur-md border-b-2 border-pink-200 p-3 flex justify-between items-center shadow-sm shrink-0 z-20 relative">
                         <div class="flex items-center gap-4 pl-2">
@@ -324,10 +332,6 @@
                         <div class="flex items-center gap-2 md:gap-3 pr-2 flex-wrap justify-end">
                             ${isAdmin ? `<button onclick="window.open('migration_tool.html', '_blank')" class="bg-gradient-to-r from-amber-400 to-orange-400 text-white font-bold px-3 py-1.5 rounded-lg shadow-sm hover:scale-105 transition-transform text-sm shrink-0 hidden lg:block">⚙️ 題庫管理</button>` : ''}
                             
-                            <button onclick="openScoreBoard()" class="font-bold text-indigo-600 bg-indigo-50 px-2 md:px-3 py-1.5 rounded-lg border border-indigo-200 shadow-sm hover:bg-indigo-100 transition-colors text-sm flex items-center gap-1 shrink-0">
-                                📊 <span class="hidden md:inline">成績總覽</span>
-                            </button>
-
                             <button onclick="openWeaknessCamp()" class="font-bold text-red-600 bg-red-50 px-2 md:px-3 py-1.5 rounded-lg border border-red-200 shadow-sm hover:bg-red-100 transition-colors text-sm flex items-center gap-1 shrink-0">
                                 🔥 <span class="hidden md:inline">錯題集中營</span>
                             </button>
@@ -390,11 +394,13 @@
             } catch(e) { console.error("renderMain error", e); }
         };
 
-        // 全域 Modals 渲染
         const renderGlobalModals = () => {
             try {
                 const container = document.getElementById('modals-container');
+                if(!container) return;
+                
                 container.innerHTML = `
+                    <!-- 登入與編輯設定 Modal -->
                     <div id="login-pwd-modal" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm hidden items-center justify-center z-[70] p-4 transition-opacity duration-200 opacity-0">
                         <div class="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden border-4 border-pink-300 transform scale-95 transition-transform duration-200 flex flex-col p-6">
                             <h2 class="text-2xl font-black text-pink-600 mb-4 text-center">🔐 安全登入</h2>
@@ -462,6 +468,7 @@
                         </div>
                     </div>
 
+                    <!-- 學習相關 Modals -->
                     <div id="level-select-modal" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm hidden items-center justify-center z-[70] p-4 transition-opacity duration-200 opacity-0" onclick="if(event.target === this) closeGlobalModal('level-select-modal')">
                         <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden border-4 border-pink-300 transform scale-95 transition-transform duration-200 flex flex-col p-6 relative">
                             <div class="absolute top-4 left-4 text-3xl opacity-20 pointer-events-none">🌸</div>
@@ -471,10 +478,12 @@
                             <p class="text-center font-bold text-gray-500 mb-4 text-sm">系統將自動接續您的學習進度！<br><span id="level-modal-date" class="text-xs text-pink-500 bg-pink-50 px-2 py-0.5 rounded mt-2 inline-block shadow-sm"></span></p>
                             
                             <div class="grid grid-cols-2 gap-3 mb-4" id="level-buttons-container">
-                                </div>
+                                <!-- JS 動態填入 -->
+                            </div>
                             
                             <div id="level-actions-container" class="flex flex-col gap-2 mt-4 pt-4 border-t border-gray-100 hidden">
-                                </div>
+                                <!-- JS 動態填入複習/測驗按鈕 -->
+                            </div>
 
                             <button onclick="closeGlobalModal('level-select-modal')" class="mt-4 w-full py-2.5 rounded-xl font-bold text-gray-500 bg-gray-50 border border-gray-200 hover:bg-gray-100">取消</button>
                         </div>
@@ -487,7 +496,8 @@
                                 <button onclick="closeGlobalModal('learning-modal')" class="hover:bg-white/30 rounded-full w-8 h-8 flex items-center justify-center font-bold text-xl transition-colors">✕</button>
                             </div>
                             <div class="p-4 md:p-6 overflow-y-auto flex-1 custom-scrollbar bg-pink-50/30" id="learning-content">
-                                </div>
+                                <!-- 單字列表動態注入 -->
+                            </div>
                             <div class="p-4 bg-white border-t border-pink-100 flex justify-between items-center shrink-0">
                                 <button onclick="prevPage()" id="btn-prev-page" class="px-5 py-2.5 rounded-xl font-bold text-pink-600 bg-pink-50 hover:bg-pink-100 border border-pink-200 transition-all invisible">◀ 上一頁</button>
                                 <span id="learning-page-indicator" class="font-bold text-gray-500 text-sm bg-gray-100 px-3 py-1 rounded-full"></span>
@@ -496,6 +506,7 @@
                         </div>
                     </div>
 
+                    <!-- 測驗與結果 Modals -->
                     <div id="quiz-modal" class="fixed inset-0 bg-gray-900/80 backdrop-blur-sm hidden items-center justify-center z-[90] p-4 transition-opacity duration-200 opacity-0" style="perspective: 1000px;">
                         <div class="bg-white rounded-3xl shadow-2xl w-full max-w-[95vw] lg:max-w-6xl overflow-hidden border-4 border-rose-300 transform scale-95 transition-transform duration-200 flex flex-col min-h-[85vh]">
                             <div class="bg-gradient-to-r from-rose-400 to-pink-500 p-4 flex justify-between items-center text-white shrink-0">
@@ -509,7 +520,8 @@
 
                             <div class="p-6 md:p-10 flex-1 flex flex-col items-center justify-center bg-rose-50/20 relative overflow-y-auto custom-scrollbar">
                                 <div id="quiz-question-container" class="text-center w-full max-w-4xl mx-auto flex flex-col justify-center flex-1">
-                                    </div>
+                                    <!-- JS 動態注入題目與選項 -->
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -533,21 +545,27 @@
                         </div>
                     </div>
 
+                    <!-- 錯題集中營 Modal -->
                     <div id="weakness-modal" class="fixed inset-0 bg-gray-900/80 backdrop-blur-sm hidden items-center justify-center z-[80] p-4 transition-opacity duration-200 opacity-0" onclick="if(event.target === this) closeGlobalModal('weakness-modal')">
                         <div class="bg-white rounded-[2rem] shadow-2xl w-full max-w-[95vw] lg:max-w-6xl overflow-hidden border-4 border-red-300 transform scale-95 transition-transform duration-200 flex flex-col relative min-h-[90vh]">
                             <div class="bg-gradient-to-r from-red-500 to-rose-500 p-4 flex justify-between items-center text-white shrink-0">
                                 <div class="flex items-center gap-4">
                                     <h2 class="text-xl font-bold flex items-center gap-2">🔥 錯題集中營</h2>
+                                    <button onclick="openScoreBoard()" class="bg-white/20 hover:bg-white/30 text-white border border-white/50 px-3 py-1.5 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center gap-1">
+                                        📊 測驗成績總覽
+                                    </button>
                                 </div>
                                 <button onclick="closeGlobalModal('weakness-modal')" class="hover:bg-white/20 rounded-full w-8 h-8 flex items-center justify-center font-bold text-xl">✕</button>
                             </div>
                             <div class="p-4 md:p-6 bg-red-50/30 overflow-y-auto flex-1 custom-scrollbar" id="weakness-content">
-                                </div>
+                                <!-- JS 動態注入錯題 -->
+                            </div>
                         </div>
                     </div>
 
+                    <!-- 成績總覽表 Modal -->
                     <div id="score-board-modal" class="fixed inset-0 bg-gray-900/80 backdrop-blur-sm hidden items-center justify-center z-[110] p-4 transition-opacity duration-200 opacity-0" onclick="if(event.target === this) closeGlobalModal('score-board-modal')">
-                        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-5xl overflow-hidden border-4 border-indigo-300 transform scale-95 transition-transform duration-200 flex flex-col min-h-[50vh]">
+                        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-[95vw] lg:max-w-5xl overflow-hidden border-4 border-indigo-300 transform scale-95 transition-transform duration-200 flex flex-col min-h-[50vh]">
                             <div class="bg-gradient-to-r from-indigo-500 to-purple-600 p-4 flex justify-between items-center text-white shrink-0">
                                 <h2 class="text-xl font-bold flex items-center gap-2">📊 全員測驗成績總覽</h2>
                                 <button onclick="closeGlobalModal('score-board-modal')" class="hover:bg-white/20 rounded-full w-8 h-8 flex items-center justify-center font-bold text-xl">✕</button>
@@ -556,15 +574,18 @@
                                 <table class="w-full text-center border-collapse bg-white shadow-sm rounded-xl overflow-hidden">
                                     <thead class="bg-indigo-100 text-indigo-800 border-b-2 border-indigo-200">
                                         <tr id="score-board-header">
-                                            </tr>
+                                            <!-- JS 注入 Header -->
+                                        </tr>
                                     </thead>
                                     <tbody id="score-board-body" class="divide-y divide-gray-100">
-                                        </tbody>
+                                        <!-- JS 注入 Data -->
+                                    </tbody>
                                 </table>
                             </div>
                         </div>
                     </div>
 
+                    <!-- 瀑布流總覽 Modal -->
                     <div id="waterfall-modal" class="fixed inset-0 bg-gray-900/80 backdrop-blur-sm hidden items-center justify-center z-[80] p-4 transition-opacity duration-200 opacity-0" onclick="if(event.target === this) closeGlobalModal('waterfall-modal')">
                         <div class="bg-white rounded-[2rem] shadow-2xl w-full max-w-[95vw] lg:max-w-6xl overflow-hidden border-4 border-pink-300 transform scale-95 transition-transform duration-200 flex flex-col relative h-[90vh]">
                             <div class="bg-gradient-to-r from-pink-500 to-rose-500 p-4 flex justify-between items-center text-white shrink-0">
@@ -572,10 +593,12 @@
                                 <button onclick="closeGlobalModal('waterfall-modal')" class="hover:bg-white/20 rounded-full w-8 h-8 flex items-center justify-center font-bold text-xl">✕</button>
                             </div>
                             <div class="p-4 md:p-6 bg-pink-50/30 overflow-y-auto flex-1 custom-scrollbar" id="waterfall-content">
-                                </div>
+                                <!-- 瀑布流卡片注入處 -->
+                            </div>
                         </div>
                     </div>
 
+                    <!-- 進度追蹤 Modal -->
                     <div id="progress-modal" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm hidden items-center justify-center z-[70] p-4 transition-opacity duration-200 opacity-0" onclick="if(event.target === this) closeGlobalModal('progress-modal')">
                         <div class="bg-white rounded-[2rem] shadow-2xl w-full max-w-[95vw] lg:max-w-6xl overflow-hidden border-4 border-rose-300 transform scale-95 transition-transform duration-200 flex flex-col relative min-h-[85vh]">
                             <div class="bg-gradient-to-r from-rose-400 to-pink-500 p-4 flex justify-between items-center text-white shrink-0">
@@ -583,10 +606,12 @@
                                 <button onclick="closeGlobalModal('progress-modal')" class="hover:bg-white/20 rounded-full w-8 h-8 flex items-center justify-center font-bold text-xl">✕</button>
                             </div>
                             <div class="p-6 bg-rose-50/30 overflow-y-auto flex-1 custom-scrollbar" id="progress-content">
-                                </div>
+                                <!-- JS 動態注入 -->
+                            </div>
                         </div>
                     </div>
 
+                    <!-- 瀏覽公開資料卡 Modal -->
                     <div id="view-profile-modal" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm hidden items-center justify-center z-[80] p-4 transition-opacity duration-200 opacity-0" onclick="if(event.target === this) closeGlobalModal('view-profile-modal')">
                         <div class="bg-white rounded-[2rem] shadow-2xl w-full max-w-sm overflow-hidden transform scale-95 transition-transform duration-200 flex flex-col relative border-4 border-pink-200">
                             <button onclick="closeGlobalModal('view-profile-modal')" class="absolute top-4 right-4 bg-black/20 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold z-10 hover:bg-black/40">✕</button>
@@ -655,7 +680,9 @@
                 document.getElementById('progress-user-name').innerText = `📈 ${dispName} 的單字進度`;
 
                 let html = '<div class="space-y-4">';
-                LEVELS.forEach(lvl => {
+                const safeLevels = LEVELS || [];
+                
+                safeLevels.forEach(lvl => {
                     const levelWords = Object.values(allVocab).filter(v => v.level === lvl);
                     const totalWords = levelWords.length;
                     const progressDocId = `${targetUser}_${lvl}`;
@@ -839,57 +866,59 @@
         };
 
         window.openProfileEditModal = (name = '', isRegister = false) => {
-            const nameInput = document.getElementById('prof-name');
-            nameInput.value = name;
-            
-            if (isRegister && !name) {
-                nameInput.disabled = false;
-                nameInput.classList.remove('bg-gray-100', 'text-gray-500');
-                nameInput.classList.add('bg-white', 'text-gray-700');
-                nameInput.placeholder = "請輸入真實姓名作為登入帳號";
-            } else {
-                nameInput.disabled = true;
-                nameInput.classList.remove('bg-white', 'text-gray-700');
-                nameInput.classList.add('bg-gray-100', 'text-gray-500');
-                nameInput.placeholder = "";
-            }
-            
-            const isNick = (name === 'Nick');
-            const currentPwd = usersProfile[name]?.password || (isNick ? '2iligloi' : '');
-            document.getElementById('prof-pwd').value = currentPwd;
-            document.getElementById('prof-pwd-confirm').value = currentPwd;
+            try {
+                const nameInput = document.getElementById('prof-name');
+                nameInput.value = name;
+                
+                if (isRegister && !name) {
+                    nameInput.disabled = false;
+                    nameInput.classList.remove('bg-gray-100', 'text-gray-500');
+                    nameInput.classList.add('bg-white', 'text-gray-700');
+                    nameInput.placeholder = "請輸入真實姓名作為登入帳號";
+                } else {
+                    nameInput.disabled = true;
+                    nameInput.classList.remove('bg-white', 'text-gray-700');
+                    nameInput.classList.add('bg-gray-100', 'text-gray-500');
+                    nameInput.placeholder = "";
+                }
+                
+                const isNick = (name === 'Nick');
+                const currentPwd = usersProfile[name]?.password || (isNick ? '2iligloi' : '');
+                document.getElementById('prof-pwd').value = currentPwd;
+                document.getElementById('prof-pwd-confirm').value = currentPwd;
 
-            if (isNick && isRegister) {
-                document.getElementById('prof-pwd').disabled = true;
-                document.getElementById('prof-pwd-confirm').disabled = true;
-                document.getElementById('pwd-hint').innerText = "(管理員預設密碼不可修改)";
-            } else {
-                document.getElementById('prof-pwd').disabled = false;
-                document.getElementById('prof-pwd-confirm').disabled = false;
-                document.getElementById('pwd-hint').innerText = "";
-            }
+                if (isNick && isRegister) {
+                    document.getElementById('prof-pwd').disabled = true;
+                    document.getElementById('prof-pwd-confirm').disabled = true;
+                    document.getElementById('pwd-hint').innerText = "(管理員預設密碼不可修改)";
+                } else {
+                    document.getElementById('prof-pwd').disabled = false;
+                    document.getElementById('prof-pwd-confirm').disabled = false;
+                    document.getElementById('pwd-hint').innerText = "";
+                }
 
-            document.getElementById('prof-nickname').value = usersProfile[name]?.nickname || name;
-            document.getElementById('prof-birthday').value = usersProfile[name]?.birthday || '';
-            document.getElementById('prof-target').value = usersProfile[name]?.target || '';
-            document.getElementById('prof-motto').value = usersProfile[name]?.motto || '';
-            
-            let photo = usersProfile[name]?.photo || '';
-            document.getElementById('prof-photo-upload').dataset.base64 = photo;
-            
-            if (photo) {
-                document.getElementById('prof-photo-preview').src = photo;
-                document.getElementById('prof-photo-preview').classList.remove('hidden');
-                document.getElementById('prof-photo-placeholder').classList.add('hidden');
-            } else {
-                document.getElementById('prof-photo-preview').classList.add('hidden');
-                document.getElementById('prof-photo-placeholder').classList.remove('hidden');
-            }
+                document.getElementById('prof-nickname').value = usersProfile[name]?.nickname || name;
+                document.getElementById('prof-birthday').value = usersProfile[name]?.birthday || '';
+                document.getElementById('prof-target').value = usersProfile[name]?.target || '';
+                document.getElementById('prof-motto').value = usersProfile[name]?.motto || '';
+                
+                let photo = usersProfile[name]?.photo || '';
+                document.getElementById('prof-photo-upload').dataset.base64 = photo;
+                
+                if (photo) {
+                    document.getElementById('prof-photo-preview').src = photo;
+                    document.getElementById('prof-photo-preview').classList.remove('hidden');
+                    document.getElementById('prof-photo-placeholder').classList.add('hidden');
+                } else {
+                    document.getElementById('prof-photo-preview').classList.add('hidden');
+                    document.getElementById('prof-photo-placeholder').classList.remove('hidden');
+                }
 
-            document.getElementById('profile-modal-title').innerText = isRegister ? '🚀 歡迎加入！請建立專屬資料卡' : '📝 修改我的資料卡';
-            document.getElementById('profile-modal-close').style.display = isRegister ? 'none' : 'flex'; 
-            
-            openGlobalModal('profile-edit-modal');
+                document.getElementById('profile-modal-title').innerText = isRegister ? '🚀 歡迎加入！請建立專屬資料卡' : '📝 修改我的資料卡';
+                document.getElementById('profile-modal-close').style.display = isRegister ? 'none' : 'flex'; 
+                
+                openGlobalModal('profile-edit-modal');
+            } catch(e) { console.error("openProfileEditModal error", e); }
         };
 
         window.handleProfilePhoto = (e) => {
@@ -992,12 +1021,13 @@
                 modalState.date = dateStr;
                 
                 const levelContainer = document.getElementById('level-buttons-container');
-                levelContainer.innerHTML = LEVELS.map(lvl => `<button onclick="startLearning('${lvl}')" class="py-4 rounded-xl border-2 border-pink-200 text-pink-600 font-black text-lg hover:bg-pink-500 hover:text-white transition-all bg-white shadow-sm hover:scale-[1.02]">${lvl}</button>`).join('');
+                const safeLevels = LEVELS || [];
+                levelContainer.innerHTML = safeLevels.map(lvl => `<button onclick="startLearning('${lvl}')" class="py-4 rounded-xl border-2 border-pink-200 text-pink-600 font-black text-lg hover:bg-pink-500 hover:text-white transition-all bg-white shadow-sm hover:scale-[1.02]">${lvl}</button>`).join('');
                 
                 let hasAnyProgress = false;
-                let currentSelectedLevel = modalState.level || LEVELS[0]; 
+                let currentSelectedLevel = modalState.level || safeLevels[0] || 'Level 1'; 
 
-                LEVELS.forEach(lvl => {
+                safeLevels.forEach(lvl => {
                     const docId = `${username}_${lvl}`;
                     if(allProgress[docId] && allProgress[docId].lastIndex > 0) hasAnyProgress = true;
                 });
@@ -1009,7 +1039,7 @@
                         <p class="text-xs text-center font-bold text-gray-400 mb-1">您已有學習紀錄，可進行隨堂測驗或複習 👇</p>
                         <div class="flex gap-2">
                             <select id="action-level-select" class="w-1/3 px-2 py-2 rounded-lg border border-gray-300 font-bold text-pink-600 focus:outline-none">
-                                ${LEVELS.map(lvl => `<option value="${lvl}" ${lvl === currentSelectedLevel ? 'selected' : ''}>${lvl}</option>`).join('')}
+                                ${safeLevels.map(lvl => `<option value="${lvl}" ${lvl === currentSelectedLevel ? 'selected' : ''}>${lvl}</option>`).join('')}
                             </select>
                             <button onclick="startQuiz('level', document.getElementById('action-level-select').value)" class="flex-1 py-2 rounded-lg font-black text-white bg-rose-500 hover:bg-rose-600 shadow-sm transition-all text-sm md:text-base">
                                 📝 模擬測驗
@@ -1092,7 +1122,7 @@
                 document.getElementById('learning-modal-title-badge').innerText = `🧠 ${level} 智能複習 (${reviewBatch.length} 字)`;
                 
                 closeGlobalModal('level-select-modal');
-                closeGlobalModal('complete-modal');
+                closeGlobalModal('complete-modal'); // If called from completion screen
                 renderLearningPage();
                 openGlobalModal('learning-modal');
             } catch(e) { console.error("startEbbinghausReview error", e); }
@@ -1184,7 +1214,7 @@
             const totalPages = Math.ceil(currentLearningBatch.length / 10);
             
             if(currentPageIndex >= totalPages - 1) {
-                // 強制進入測驗
+                // 強制進入測驗，不先存進度
                 alert("進入隨機測驗！必須完成測驗，系統才會記錄進度喔！");
                 startQuiz('post_learning', modalState.level);
             } else {
@@ -1357,90 +1387,90 @@
         };
 
         window.finishQuiz = async () => {
-            const total = quizState.questions.length;
-            const correct = quizState.correct;
-            const score = correct; 
+            try {
+                const total = quizState.questions.length;
+                const correct = quizState.correct;
+                const score = correct; 
 
-            // 如果是剛學習完的測驗 (post_learning)，此時才寫入進度！
-            if (quizState.mode === 'post_learning') {
-                const progressDocId = `${username}_${quizState.level}`;
-                const currentIndex = allProgress[progressDocId]?.lastIndex || 0;
-                
-                if (!isReviewMode) {
-                    const newIndex = currentIndex + currentLearningBatch.length;
+                // 如果是剛學習完的測驗 (post_learning)，此時才寫入進度！
+                if (quizState.mode === 'post_learning') {
+                    const progressDocId = `${username}_${quizState.level}`;
+                    const currentIndex = allProgress[progressDocId]?.lastIndex || 0;
+                    
+                    if (!isReviewMode) {
+                        const newIndex = currentIndex + currentLearningBatch.length;
+                        try {
+                            await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'VocabProgress', progressDocId), {
+                                user: username,
+                                level: quizState.level,
+                                lastIndex: newIndex,
+                                updatedAt: new Date().toISOString()
+                            }, { merge: true });
+                        } catch(e) { console.error(e); }
+                    }
+                    
+                    const activityId = `${username}_${modalState.date}_${Date.now()}`;
                     try {
-                        await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'VocabProgress', progressDocId), {
+                        await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'VocabActivity', activityId), {
                             user: username,
+                            date: modalState.date,
                             level: quizState.level,
-                            lastIndex: newIndex,
-                            updatedAt: new Date().toISOString()
-                        }, { merge: true });
+                            wordsLearned: currentLearningBatch.length,
+                            timestamp: new Date().toISOString()
+                        });
                     } catch(e) { console.error(e); }
                 }
-                
-                const activityId = `${username}_${modalState.date}_${Date.now()}`;
-                try {
-                    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'VocabActivity', activityId), {
-                        user: username,
-                        date: modalState.date,
-                        level: quizState.level,
-                        wordsLearned: currentLearningBatch.length,
-                        timestamp: new Date().toISOString()
-                    });
-                } catch(e) { console.error(e); }
-            }
 
-            // 儲存錯題 (永遠不刪除，只需新增)
-            if (quizState.wrongWords.length > 0) {
-                try {
-                    for(let w of quizState.wrongWords) {
-                        const weakId = `${username}_${w.id}`;
-                        await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'VocabWeakness', weakId), {
-                            user: username,
-                            wordId: w.id,
-                            wordObj: w,
-                            addedAt: new Date().toISOString()
-                        }, { merge: true });
-                    }
-                } catch(e) { console.error("Error saving weaknesses", e); }
-            }
-
-            // 計算評價與更新最佳成績
-            let grade = 'C 級';
-            let icon = '🎯';
-            let msg = '再接再厲！錯題已經幫您整理到集中營囉。';
-            
-            if (score >= total) {
-                grade = 'S 級'; icon = '👑'; msg = '太神啦！完美無瑕！完全掌握。';
-            } else if (score >= total - 3) {
-                grade = 'A 級'; icon = '🥇'; msg = '非常優秀！只差一點點就完美了。';
-            } else if (score >= total * 0.6) {
-                grade = 'B 級'; icon = '🥈'; msg = '表現不錯！請去錯題集中營複習一下喔。';
-            }
-
-            if (quizState.mode === 'level' || quizState.mode === 'post_learning') {
-                const progressDocId = `${username}_${quizState.level}`;
-                const currentBest = allProgress[progressDocId]?.bestScore || 0;
-                if (score > currentBest) {
+                // 儲存錯題 (永遠不刪除，只需新增)
+                if (quizState.wrongWords.length > 0) {
                     try {
-                        await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'VocabProgress', progressDocId), {
-                            bestScore: score,
-                            updatedAt: new Date().toISOString()
-                        }, { merge: true });
-                        msg += '<br><span class="text-rose-500 font-bold mt-2 inline-block">🚀 最高紀錄已更新！</span>';
-                    } catch(e) {}
+                        for(let w of quizState.wrongWords) {
+                            const weakId = `${username}_${w.id}`;
+                            await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'VocabWeakness', weakId), {
+                                user: username,
+                                wordId: w.id,
+                                wordObj: w,
+                                addedAt: new Date().toISOString()
+                            }, { merge: true });
+                        }
+                    } catch(e) { console.error("Error saving weaknesses", e); }
                 }
-            }
 
-            try {
+                // 計算評價與更新最佳成績
+                let grade = 'C 級';
+                let icon = '🎯';
+                let msg = '再接再厲！錯題已經幫您整理到集中營囉。';
+                
+                if (score >= total) {
+                    grade = 'S 級'; icon = '👑'; msg = '太神啦！完美無瑕！完全掌握。';
+                } else if (score >= total - 3) {
+                    grade = 'A 級'; icon = '🥇'; msg = '非常優秀！只差一點點就完美了。';
+                } else if (score >= total * 0.6) {
+                    grade = 'B 級'; icon = '🥈'; msg = '表現不錯！請去錯題集中營複習一下喔。';
+                }
+
+                if (quizState.mode === 'level' || quizState.mode === 'post_learning') {
+                    const progressDocId = `${username}_${quizState.level}`;
+                    const currentBest = allProgress[progressDocId]?.bestScore || 0;
+                    if (score > currentBest) {
+                        try {
+                            await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'VocabProgress', progressDocId), {
+                                bestScore: score,
+                                updatedAt: new Date().toISOString()
+                            }, { merge: true });
+                            msg += '<br><span class="text-rose-500 font-bold mt-2 inline-block">🚀 最高紀錄已更新！</span>';
+                        } catch(e) {}
+                    }
+                }
+
                 document.getElementById('quiz-result-icon').innerText = icon;
                 document.getElementById('quiz-result-grade').innerText = grade;
                 document.getElementById('quiz-result-score').innerText = `答對 ${correct} / ${total} 題`;
                 document.getElementById('quiz-result-msg').innerHTML = msg;
-            } catch(e) {}
 
-            closeGlobalModal('quiz-modal');
-            openGlobalModal('quiz-result-modal');
+                closeGlobalModal('quiz-modal');
+                openGlobalModal('quiz-result-modal');
+            } catch(e) { console.error("finishQuiz error", e); }
         };
 
         // ==========================================
@@ -1461,15 +1491,16 @@
                     `;
                 } else {
                     const weakByLevel = {};
-                    LEVELS.forEach(l => weakByLevel[l] = []);
+                    const safeLevels = LEVELS || [];
+                    safeLevels.forEach(l => weakByLevel[l] = []);
                     myWeaknesses.forEach(w => {
                         if (weakByLevel[w.wordObj.level]) weakByLevel[w.wordObj.level].push(w);
                     });
 
                     let html = '<div class="space-y-8">';
-                    LEVELS.forEach(lvl => {
+                    safeLevels.forEach(lvl => {
                         const weakWords = weakByLevel[lvl];
-                        if (weakWords.length > 0) {
+                        if (weakWords && weakWords.length > 0) {
                             html += `
                                 <div>
                                     <h3 class="text-xl font-black text-red-600 mb-4 border-b-2 border-red-200 pb-2 pl-2 border-l-4 border-l-red-500">${lvl} <span class="text-sm font-bold text-gray-400 ml-2">共 ${weakWords.length} 題</span></h3>
@@ -1526,11 +1557,13 @@
                 if(!header || !tbody) return;
                 
                 let headerHtml = `<th class="p-3 bg-indigo-100 sticky left-0 z-10">學習者</th>`;
-                LEVELS.forEach(lvl => headerHtml += `<th class="p-3 whitespace-nowrap">${lvl}</th>`);
+                const safeLevels = LEVELS || [];
+                safeLevels.forEach(lvl => headerHtml += `<th class="p-3 whitespace-nowrap">${lvl}</th>`);
                 header.innerHTML = headerHtml;
 
                 let bodyHtml = '';
-                globalUsers.forEach(u => {
+                const safeUsers = globalUsers || [];
+                safeUsers.forEach(u => {
                     const dispName = usersProfile[u]?.nickname || u;
                     bodyHtml += `<tr class="hover:bg-indigo-50 transition-colors">`;
                     bodyHtml += `<td class="p-3 font-black text-gray-800 bg-white sticky left-0 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] flex items-center gap-2">
@@ -1538,7 +1571,7 @@
                                     ${dispName}
                                  </td>`;
                     
-                    LEVELS.forEach(lvl => {
+                    safeLevels.forEach(lvl => {
                         const score = allProgress[`${u}_${lvl}`]?.bestScore;
                         if (score !== undefined) {
                             let colorClass = 'text-gray-600 font-bold';
@@ -1580,7 +1613,7 @@
                     usersProfile = {};
                 }
                 if(!username && window.renderLogin) window.renderLogin();
-            });
+            }, (err) => console.warn("設定檔監聽失敗:", err));
         };
 
         const setupListeners = () => {
@@ -1628,6 +1661,7 @@
                 }
                 if(username) {
                     try { window.renderSidebar(); } catch(e) { console.error(e); }
+                    try { window.renderMainContent(); } catch(e) { console.error(e); }
                 }
             }, errHandler);
 
