@@ -145,6 +145,7 @@
         let currentYear = new Date().getFullYear();
         let currentMonth = new Date().getMonth(); 
         
+        // 學習模式分頁狀態
         let currentLearningBatch = []; // 每次 20 個
         let currentPageIndex = 0;      
         let isReviewMode = false;      
@@ -216,23 +217,27 @@
             initVoice(); 
         }
 
-        // 統一發音管理
+        // 統一發音管理 (強化防呆與緩衝機制)
         window.playAudio = (text, e) => {
-            if(e) e.stopPropagation();
+            if(e) { e.preventDefault(); e.stopPropagation(); }
             if(!text) return;
             
             if ('speechSynthesis' in window) {
                 window.speechSynthesis.cancel(); 
-                if (!femaleVoice) initVoice(); 
                 
-                const utterance = new SpeechSynthesisUtterance(text);
-                utterance.lang = 'en-US';
-                if (femaleVoice) {
-                    utterance.voice = femaleVoice;
-                }
-                utterance.rate = 0.9;
-                utterance.pitch = 1.1; 
-                window.speechSynthesis.speak(utterance);
+                // 微幅延遲讓引擎有時間準備，避免連續點擊被吃字
+                setTimeout(() => {
+                    if (!femaleVoice) initVoice(); 
+                    
+                    const utterance = new SpeechSynthesisUtterance(text);
+                    utterance.lang = 'en-US';
+                    if (femaleVoice) {
+                        utterance.voice = femaleVoice;
+                    }
+                    utterance.rate = 0.9;
+                    utterance.pitch = 1.1; 
+                    window.speechSynthesis.speak(utterance);
+                }, 50);
             }
         };
 
@@ -394,11 +399,13 @@
             } catch(e) { console.error("renderMain error", e); }
         };
 
+        // 全域 Modals 渲染
         const renderGlobalModals = () => {
             try {
                 const container = document.getElementById('modals-container');
                 if(!container) return;
                 
+                // 確保這裡只會產生一組唯一的 Modals
                 container.innerHTML = `
                     <!-- 登入與編輯設定 Modal -->
                     <div id="login-pwd-modal" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm hidden items-center justify-center z-[70] p-4 transition-opacity duration-200 opacity-0">
@@ -1214,7 +1221,7 @@
             const totalPages = Math.ceil(currentLearningBatch.length / 10);
             
             if(currentPageIndex >= totalPages - 1) {
-                // 強制進入測驗，不先存進度
+                // 強制進入測驗
                 alert("進入隨機測驗！必須完成測驗，系統才會記錄進度喔！");
                 startQuiz('post_learning', modalState.level);
             } else {
