@@ -106,7 +106,7 @@
         const appData = JSON.parse(appDataRaw);
         
         const EXAM_DATE = new Date(appData.EXAM_DATE);
-        const LEVELS = appData.LEVELS || [];
+        const LEVELS = appData.LEVELS;
 
         const USER_COLORS = [
             'bg-[#f472b6] text-white', 'bg-[#fb7185] text-white', 'bg-[#e879f9] text-white',
@@ -145,8 +145,7 @@
         let currentYear = new Date().getFullYear();
         let currentMonth = new Date().getMonth(); 
         
-        // 學習模式分頁狀態
-        let currentLearningBatch = []; // 每次 20 個
+        let currentLearningBatch = []; // 每次改為 20 個
         let currentPageIndex = 0;      
         let isReviewMode = false;      
 
@@ -160,19 +159,15 @@
         //  輔助工具函式
         // ==========================================
         const getDaysLeft = (targetDateStr) => {
-            if (!targetDateStr) return 0;
             const now = new Date();
             now.setHours(0,0,0,0);
             const target = new Date(targetDateStr);
-            if(isNaN(target.getTime())) return 0;
             target.setHours(0,0,0,0);
             return Math.ceil((target - now) / (1000 * 60 * 60 * 24));
         };
 
         const formatDate = (date) => {
-            if (!date) return '';
             const d = new Date(date);
-            if (isNaN(d.getTime())) return '';
             return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
         };
 
@@ -184,9 +179,8 @@
         };
 
         const getAvatarChar = (u) => {
-            if (!u) return '?';
             if(usersProfile[u] && usersProfile[u].nickname) return usersProfile[u].nickname.charAt(0);
-            return u.charAt(0);
+            return u ? u.charAt(0) : '?';
         };
 
         const getCircleNum = (idx) => {
@@ -196,49 +190,35 @@
 
         const escapeQuotes = (str) => {
             if(!str) return '';
-            return str.replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/\n/g, ' ');
+            return str.replace(/'/g, "\\'").replace(/"/g, '&quot;');
         };
 
-        // 初始化與尋找女性/真人語音
         const initVoice = () => {
             if (!('speechSynthesis' in window)) return;
-            const voices = window.speechSynthesis.getVoices();
-            if (voices.length === 0) return; 
+            const voices = speechSynthesis.getVoices();
             femaleVoice = voices.find(v => v.lang.startsWith('en') && v.name.includes('Google US English')) ||
                           voices.find(v => v.lang.startsWith('en') && v.name.includes('Samantha')) ||
                           voices.find(v => v.lang.startsWith('en') && v.name.includes('Zira')) ||
                           voices.find(v => v.lang.startsWith('en') && (v.name.toLowerCase().includes('female') || v.name.toLowerCase().includes('girl'))) ||
                           voices.find(v => v.lang.startsWith('en-US')) || 
-                          voices.find(v => v.lang.startsWith('en')) || voices[0];
+                          voices.find(v => v.lang.startsWith('en'));
         };
-        
-        if ('speechSynthesis' in window) {
-            window.speechSynthesis.onvoiceschanged = initVoice;
-            initVoice(); 
+        if ('speechSynthesis' in window && speechSynthesis.onvoiceschanged !== undefined) {
+            speechSynthesis.onvoiceschanged = initVoice;
         }
 
-        // 統一發音管理 (強化防呆與緩衝機制)
-        window.playAudio = (text, e) => {
-            if(e) { e.preventDefault(); e.stopPropagation(); }
-            if(!text) return;
-            
-            if ('speechSynthesis' in window) {
-                window.speechSynthesis.cancel(); 
-                
-                // 微幅延遲讓引擎有時間準備，避免連續點擊被吃字
-                setTimeout(() => {
-                    if (!femaleVoice) initVoice(); 
-                    
-                    const utterance = new SpeechSynthesisUtterance(text);
-                    utterance.lang = 'en-US';
-                    if (femaleVoice) {
-                        utterance.voice = femaleVoice;
-                    }
-                    utterance.rate = 0.9;
-                    utterance.pitch = 1.1; 
-                    window.speechSynthesis.speak(utterance);
-                }, 50);
+        window.playAudio = (text, event) => {
+            if (event) {
+                event.stopPropagation();
+                event.preventDefault();
             }
+            if (!('speechSynthesis' in window)) return;
+            speechSynthesis.cancel(); // 停止當前正在播放的語音
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'en-US';
+            if (femaleVoice) utterance.voice = femaleVoice;
+            utterance.rate = 0.9; // 稍微放慢語速，聽得更清楚
+            speechSynthesis.speak(utterance);
         };
 
         // ==========================================
@@ -254,7 +234,6 @@
         window.renderSetup = () => {
             try {
                 const container = document.getElementById('view-container');
-                if(!container) return;
                 const currentConfig = getStoredConfig() || {};
                 container.innerHTML = `
                     <div class="flex-1 flex flex-col items-center justify-center p-6 relative z-10 overflow-y-auto">
@@ -282,9 +261,6 @@
         window.renderLogin = () => {
             try {
                 const container = document.getElementById('view-container');
-                if(!container) return;
-                const safeUsers = globalUsers || [];
-                
                 container.innerHTML = `
                     <div class="flex-1 flex flex-col items-center justify-center p-6 relative z-10 overflow-y-auto">
                         <div class="glass-panel p-8 md:p-12 rounded-[2.5rem] shadow-2xl z-10 w-[36rem] max-w-[95vw] text-center border-4 border-pink-300 relative overflow-hidden">
@@ -300,8 +276,8 @@
                             <div class="bg-white/60 p-6 rounded-3xl border border-pink-200 mb-6 shadow-inner">
                                 <p class="text-sm text-pink-600 font-bold mb-3">👇 點擊你的暱稱登入 👇</p>
                                 <div class="flex flex-wrap justify-center gap-3">
-                                    ${safeUsers.length > 0 ? 
-                                        safeUsers.map(u => {
+                                    ${globalUsers.length > 0 ? 
+                                        globalUsers.map(u => {
                                             const dispName = usersProfile[u]?.nickname || u;
                                             return `<button onclick="initiateLogin('${u}')" class="flex items-center gap-2 text-md font-bold bg-white border-2 border-pink-200 text-pink-700 hover:bg-pink-50 hover:scale-105 py-1.5 pl-2 pr-4 rounded-xl shadow-sm transition-all">
                                                 <div class="${getUserColor(u)} w-8 h-8 rounded-full flex items-center justify-center text-sm font-black shadow-sm border-2 border-white shrink-0">${getAvatarChar(u)}</div>
@@ -327,8 +303,6 @@
         window.renderMain = () => {
             try {
                 const container = document.getElementById('view-container');
-                if(!container) return;
-                
                 container.innerHTML = `
                     <div class="bg-white/80 backdrop-blur-md border-b-2 border-pink-200 p-3 flex justify-between items-center shadow-sm shrink-0 z-20 relative">
                         <div class="flex items-center gap-4 pl-2">
@@ -337,6 +311,10 @@
                         <div class="flex items-center gap-2 md:gap-3 pr-2 flex-wrap justify-end">
                             ${isAdmin ? `<button onclick="window.open('migration_tool.html', '_blank')" class="bg-gradient-to-r from-amber-400 to-orange-400 text-white font-bold px-3 py-1.5 rounded-lg shadow-sm hover:scale-105 transition-transform text-sm shrink-0 hidden lg:block">⚙️ 題庫管理</button>` : ''}
                             
+                            <button onclick="openScoreBoard()" class="font-bold text-indigo-600 bg-indigo-50 px-2 md:px-3 py-1.5 rounded-lg border border-indigo-200 shadow-sm hover:bg-indigo-100 transition-colors text-sm flex items-center gap-1 shrink-0">
+                                📊 <span class="hidden md:inline">成績總覽</span>
+                            </button>
+
                             <button onclick="openWeaknessCamp()" class="font-bold text-red-600 bg-red-50 px-2 md:px-3 py-1.5 rounded-lg border border-red-200 shadow-sm hover:bg-red-100 transition-colors text-sm flex items-center gap-1 shrink-0">
                                 🔥 <span class="hidden md:inline">錯題集中營</span>
                             </button>
@@ -403,11 +381,8 @@
         const renderGlobalModals = () => {
             try {
                 const container = document.getElementById('modals-container');
-                if(!container) return;
-                
-                // 確保這裡只會產生一組唯一的 Modals
                 container.innerHTML = `
-                    <!-- 登入與編輯設定 Modal -->
+                    <!-- 輸入密碼登入 Modal -->
                     <div id="login-pwd-modal" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm hidden items-center justify-center z-[70] p-4 transition-opacity duration-200 opacity-0">
                         <div class="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden border-4 border-pink-300 transform scale-95 transition-transform duration-200 flex flex-col p-6">
                             <h2 class="text-2xl font-black text-pink-600 mb-4 text-center">🔐 安全登入</h2>
@@ -421,6 +396,7 @@
                         </div>
                     </div>
 
+                    <!-- 註冊/編輯個人資料卡 Modal -->
                     <div id="profile-edit-modal" class="fixed inset-0 bg-gray-900/70 backdrop-blur-sm hidden items-center justify-center z-[80] p-4 transition-opacity duration-200 opacity-0">
                         <div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden border-4 border-pink-300 transform scale-95 transition-transform duration-200 flex flex-col" style="max-height: 95vh;">
                             <div class="bg-gradient-to-r from-pink-400 to-rose-400 p-4 flex justify-between items-center text-white shrink-0">
@@ -475,7 +451,7 @@
                         </div>
                     </div>
 
-                    <!-- 學習相關 Modals -->
+                    <!-- 選擇單字等級 Modal -->
                     <div id="level-select-modal" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm hidden items-center justify-center z-[70] p-4 transition-opacity duration-200 opacity-0" onclick="if(event.target === this) closeGlobalModal('level-select-modal')">
                         <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden border-4 border-pink-300 transform scale-95 transition-transform duration-200 flex flex-col p-6 relative">
                             <div class="absolute top-4 left-4 text-3xl opacity-20 pointer-events-none">🌸</div>
@@ -496,6 +472,7 @@
                         </div>
                     </div>
 
+                    <!-- 單字學習 列表 Modal (加寬, 一次 10 題) -->
                     <div id="learning-modal" class="fixed inset-0 bg-gray-900/80 backdrop-blur-sm hidden items-center justify-center z-[80] p-4 transition-opacity duration-200 opacity-0">
                         <div class="bg-white rounded-3xl shadow-2xl w-full max-w-[95vw] lg:max-w-6xl overflow-hidden border-4 border-pink-300 transform scale-95 transition-transform duration-200 flex flex-col h-[90vh]">
                             <div class="bg-gradient-to-r from-pink-400 to-rose-400 p-4 flex justify-between items-center text-white shrink-0">
@@ -513,7 +490,7 @@
                         </div>
                     </div>
 
-                    <!-- 測驗與結果 Modals -->
+                    <!-- 測驗模式 Quiz Modal -->
                     <div id="quiz-modal" class="fixed inset-0 bg-gray-900/80 backdrop-blur-sm hidden items-center justify-center z-[90] p-4 transition-opacity duration-200 opacity-0" style="perspective: 1000px;">
                         <div class="bg-white rounded-3xl shadow-2xl w-full max-w-[95vw] lg:max-w-6xl overflow-hidden border-4 border-rose-300 transform scale-95 transition-transform duration-200 flex flex-col min-h-[85vh]">
                             <div class="bg-gradient-to-r from-rose-400 to-pink-500 p-4 flex justify-between items-center text-white shrink-0">
@@ -521,6 +498,7 @@
                                 <button onclick="closeGlobalModal('quiz-modal')" class="hover:bg-white/30 rounded-full w-8 h-8 flex items-center justify-center font-bold text-xl transition-colors">✕</button>
                             </div>
                             
+                            <!-- Progress Bar -->
                             <div class="w-full bg-gray-100 h-2">
                                 <div id="quiz-progress-bar" class="bg-rose-400 h-2 transition-all duration-300" style="width: 0%"></div>
                             </div>
@@ -533,6 +511,7 @@
                         </div>
                     </div>
 
+                    <!-- 測驗結果 Modal -->
                     <div id="quiz-result-modal" class="fixed inset-0 bg-gray-900/90 backdrop-blur-md hidden items-center justify-center z-[100] p-4 transition-opacity duration-200 opacity-0">
                         <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden border-4 border-yellow-300 transform scale-95 transition-transform duration-200 flex flex-col p-8 text-center relative bg-gradient-to-b from-yellow-50 to-white">
                             <div id="quiz-result-icon" class="text-7xl mb-2 drop-shadow-md animate-bounce">🏆</div>
@@ -572,7 +551,7 @@
 
                     <!-- 成績總覽表 Modal -->
                     <div id="score-board-modal" class="fixed inset-0 bg-gray-900/80 backdrop-blur-sm hidden items-center justify-center z-[110] p-4 transition-opacity duration-200 opacity-0" onclick="if(event.target === this) closeGlobalModal('score-board-modal')">
-                        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-[95vw] lg:max-w-5xl overflow-hidden border-4 border-indigo-300 transform scale-95 transition-transform duration-200 flex flex-col min-h-[50vh]">
+                        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-5xl overflow-hidden border-4 border-indigo-300 transform scale-95 transition-transform duration-200 flex flex-col min-h-[50vh]">
                             <div class="bg-gradient-to-r from-indigo-500 to-purple-600 p-4 flex justify-between items-center text-white shrink-0">
                                 <h2 class="text-xl font-bold flex items-center gap-2">📊 全員測驗成績總覽</h2>
                                 <button onclick="closeGlobalModal('score-board-modal')" class="hover:bg-white/20 rounded-full w-8 h-8 flex items-center justify-center font-bold text-xl">✕</button>
@@ -687,9 +666,7 @@
                 document.getElementById('progress-user-name').innerText = `📈 ${dispName} 的單字進度`;
 
                 let html = '<div class="space-y-4">';
-                const safeLevels = LEVELS || [];
-                
-                safeLevels.forEach(lvl => {
+                LEVELS.forEach(lvl => {
                     const levelWords = Object.values(allVocab).filter(v => v.level === lvl);
                     const totalWords = levelWords.length;
                     const progressDocId = `${targetUser}_${lvl}`;
@@ -873,59 +850,57 @@
         };
 
         window.openProfileEditModal = (name = '', isRegister = false) => {
-            try {
-                const nameInput = document.getElementById('prof-name');
-                nameInput.value = name;
-                
-                if (isRegister && !name) {
-                    nameInput.disabled = false;
-                    nameInput.classList.remove('bg-gray-100', 'text-gray-500');
-                    nameInput.classList.add('bg-white', 'text-gray-700');
-                    nameInput.placeholder = "請輸入真實姓名作為登入帳號";
-                } else {
-                    nameInput.disabled = true;
-                    nameInput.classList.remove('bg-white', 'text-gray-700');
-                    nameInput.classList.add('bg-gray-100', 'text-gray-500');
-                    nameInput.placeholder = "";
-                }
-                
-                const isNick = (name === 'Nick');
-                const currentPwd = usersProfile[name]?.password || (isNick ? '2iligloi' : '');
-                document.getElementById('prof-pwd').value = currentPwd;
-                document.getElementById('prof-pwd-confirm').value = currentPwd;
+            const nameInput = document.getElementById('prof-name');
+            nameInput.value = name;
+            
+            if (isRegister && !name) {
+                nameInput.disabled = false;
+                nameInput.classList.remove('bg-gray-100', 'text-gray-500');
+                nameInput.classList.add('bg-white', 'text-gray-700');
+                nameInput.placeholder = "請輸入真實姓名作為登入帳號";
+            } else {
+                nameInput.disabled = true;
+                nameInput.classList.remove('bg-white', 'text-gray-700');
+                nameInput.classList.add('bg-gray-100', 'text-gray-500');
+                nameInput.placeholder = "";
+            }
+            
+            const isNick = (name === 'Nick');
+            const currentPwd = usersProfile[name]?.password || (isNick ? '2iligloi' : '');
+            document.getElementById('prof-pwd').value = currentPwd;
+            document.getElementById('prof-pwd-confirm').value = currentPwd;
 
-                if (isNick && isRegister) {
-                    document.getElementById('prof-pwd').disabled = true;
-                    document.getElementById('prof-pwd-confirm').disabled = true;
-                    document.getElementById('pwd-hint').innerText = "(管理員預設密碼不可修改)";
-                } else {
-                    document.getElementById('prof-pwd').disabled = false;
-                    document.getElementById('prof-pwd-confirm').disabled = false;
-                    document.getElementById('pwd-hint').innerText = "";
-                }
+            if (isNick && isRegister) {
+                document.getElementById('prof-pwd').disabled = true;
+                document.getElementById('prof-pwd-confirm').disabled = true;
+                document.getElementById('pwd-hint').innerText = "(管理員預設密碼不可修改)";
+            } else {
+                document.getElementById('prof-pwd').disabled = false;
+                document.getElementById('prof-pwd-confirm').disabled = false;
+                document.getElementById('pwd-hint').innerText = "";
+            }
 
-                document.getElementById('prof-nickname').value = usersProfile[name]?.nickname || name;
-                document.getElementById('prof-birthday').value = usersProfile[name]?.birthday || '';
-                document.getElementById('prof-target').value = usersProfile[name]?.target || '';
-                document.getElementById('prof-motto').value = usersProfile[name]?.motto || '';
-                
-                let photo = usersProfile[name]?.photo || '';
-                document.getElementById('prof-photo-upload').dataset.base64 = photo;
-                
-                if (photo) {
-                    document.getElementById('prof-photo-preview').src = photo;
-                    document.getElementById('prof-photo-preview').classList.remove('hidden');
-                    document.getElementById('prof-photo-placeholder').classList.add('hidden');
-                } else {
-                    document.getElementById('prof-photo-preview').classList.add('hidden');
-                    document.getElementById('prof-photo-placeholder').classList.remove('hidden');
-                }
+            document.getElementById('prof-nickname').value = usersProfile[name]?.nickname || name;
+            document.getElementById('prof-birthday').value = usersProfile[name]?.birthday || '';
+            document.getElementById('prof-target').value = usersProfile[name]?.target || '';
+            document.getElementById('prof-motto').value = usersProfile[name]?.motto || '';
+            
+            let photo = usersProfile[name]?.photo || '';
+            document.getElementById('prof-photo-upload').dataset.base64 = photo;
+            
+            if (photo) {
+                document.getElementById('prof-photo-preview').src = photo;
+                document.getElementById('prof-photo-preview').classList.remove('hidden');
+                document.getElementById('prof-photo-placeholder').classList.add('hidden');
+            } else {
+                document.getElementById('prof-photo-preview').classList.add('hidden');
+                document.getElementById('prof-photo-placeholder').classList.remove('hidden');
+            }
 
-                document.getElementById('profile-modal-title').innerText = isRegister ? '🚀 歡迎加入！請建立專屬資料卡' : '📝 修改我的資料卡';
-                document.getElementById('profile-modal-close').style.display = isRegister ? 'none' : 'flex'; 
-                
-                openGlobalModal('profile-edit-modal');
-            } catch(e) { console.error("openProfileEditModal error", e); }
+            document.getElementById('profile-modal-title').innerText = isRegister ? '🚀 歡迎加入！請建立專屬資料卡' : '📝 修改我的資料卡';
+            document.getElementById('profile-modal-close').style.display = isRegister ? 'none' : 'flex'; 
+            
+            openGlobalModal('profile-edit-modal');
         };
 
         window.handleProfilePhoto = (e) => {
@@ -1019,6 +994,218 @@
             setupListeners();    
         };
 
+        window.openPublicProfile = (name) => {
+            try {
+                const prof = usersProfile[name] || {};
+                document.getElementById('vp-nickname').innerText = prof.nickname || name;
+                document.getElementById('vp-name').innerText = `@${name}`;
+                document.getElementById('vp-target').innerText = prof.target || '未設定';
+                document.getElementById('vp-motto').innerText = prof.motto ? `「${prof.motto}」` : '默默努力中...';
+                document.getElementById('vp-birthday').innerText = prof.birthday ? `🎂 ${prof.birthday}` : '';
+
+                const imgEl = document.getElementById('vp-photo');
+                const fallbackEl = document.getElementById('vp-avatar-fallback');
+                
+                if(prof.photo) {
+                    imgEl.src = prof.photo;
+                    imgEl.style.display = 'block';
+                    fallbackEl.style.display = 'none';
+                } else {
+                    imgEl.style.display = 'none';
+                    fallbackEl.innerText = getAvatarChar(name);
+                    fallbackEl.style.display = 'flex';
+                    fallbackEl.className = `w-24 h-24 rounded-full border-4 border-white shadow-lg flex items-center justify-center text-3xl font-black mb-3 ${getUserColor(name)}`;
+                }
+                openGlobalModal('view-profile-modal');
+            } catch(e) { console.error("openPublicProfile error", e); }
+        };
+
+        // ==========================================
+        //  UI 渲染函式 - 月曆與最愛單字
+        // ==========================================
+        window.renderSidebar = () => {
+            try {
+                const container = document.getElementById('sidebar-countdowns');
+                if(!container) return;
+                const examDaysLeft = getDaysLeft(EXAM_DATE);
+                let html = `
+                    <div class="bg-gradient-to-br from-pink-400 to-rose-500 rounded-2xl p-5 text-center shadow-lg text-white mb-4 transform hover:scale-[1.02] transition-transform border border-pink-300 shrink-0 z-10 relative">
+                        <h3 class="text-sm font-bold text-pink-100 mb-1">會考大日子 (2027-05-22)</h3>
+                        <div class="text-5xl font-black drop-shadow-md mb-2">${examDaysLeft >= 0 ? examDaysLeft : 0} <span class="text-xl">天</span></div>
+                        <div class="text-xs bg-black/20 rounded-full inline-block px-3 py-1 font-bold">🎯 決戰時刻</div>
+                    </div>
+                    <h4 class="font-bold text-pink-700 mb-2 flex items-center gap-2 shrink-0 z-10 relative">🗓️ 重要考試里程碑</h4>
+                    <div class="marquee-container flex-1 w-full relative z-0 pb-1">
+                        <div class="marquee-content space-y-3 pt-2">
+                `;
+                const sortedDates = [...importantDates].sort((a, b) => new Date(a.date) - new Date(b.date));
+                sortedDates.forEach((item) => {
+                    const days = getDaysLeft(item.date);
+                    if (days >= 0) {
+                        html += `
+                            <div class="bg-white p-3 rounded-xl border border-pink-100 shadow-sm flex justify-between items-center relative overflow-hidden group">
+                                <div class="absolute left-0 top-0 bottom-0 w-1.5 bg-pink-400"></div>
+                                <div class="pl-2">
+                                    <div class="text-sm font-bold text-gray-700">${item.title}</div>
+                                    <div class="text-xs text-gray-400">${item.date}</div>
+                                </div>
+                                <div class="text-right">
+                                    <span class="text-xl font-black ${days <= 7 ? 'text-red-500' : 'text-pink-500'}">${days}</span>
+                                    <span class="text-xs text-gray-500">天</span>
+                                </div>
+                            </div>
+                        `;
+                    }
+                });
+                html += `</div></div>`;
+                container.innerHTML = html;
+            } catch(e) { console.error("renderSidebar error", e); }
+        };
+
+        window.renderChat = () => {
+            try {
+                const container = document.getElementById('chat-messages');
+                if(!container) return;
+                container.innerHTML = chatMessages.map(msg => {
+                    const isMe = msg.user === username;
+                    const displayName = usersProfile[msg.user]?.nickname || msg.user;
+                    return `
+                        <div class="flex flex-col ${isMe ? 'items-end' : 'items-start'}">
+                            <span class="text-[10px] text-gray-400 mb-0.5 px-1">${displayName}</span>
+                            <div class="${isMe ? 'chat-bubble-me' : 'chat-bubble-other'} px-3 py-2 text-gray-700 shadow-sm inline-block max-w-[90%] break-words">
+                                ${msg.text}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                container.scrollTop = container.scrollHeight;
+            } catch(e) { console.error("renderChat error", e); }
+        };
+
+        window.renderFavorites = () => {
+            try {
+                const container = document.getElementById('favorites-feed');
+                if(!container) return;
+                
+                const myFavIds = Object.values(allFavorites).filter(f => f.user === username).map(f => f.wordId);
+                const myFavWords = myFavIds.map(id => allVocab[id]).filter(Boolean);
+                
+                if(myFavWords.length === 0) {
+                    container.innerHTML = `<div class="text-center text-rose-300 font-bold mt-10">尚無收藏的單字<br><span class="text-xs">在學習時點擊愛心即可收藏 ❤️</span></div>`;
+                    return;
+                }
+                
+                container.innerHTML = myFavWords.map(w => `
+                    <div class="bg-white p-3 rounded-xl border border-rose-100 shadow-sm flex flex-col relative group">
+                        <div class="flex justify-between items-start">
+                            <h4 class="font-black text-lg text-gray-800 pr-6">${w.word}</h4>
+                            <button onclick="toggleFavorite('${w.id}', event)" class="absolute top-3 right-3 text-rose-500 hover:scale-125 transition-transform" title="取消收藏">❤️</button>
+                        </div>
+                        <div class="text-sm text-pink-600 font-bold mb-1">${w.pos} ${w.meaning}</div>
+                        <button onclick="playAudio('${escapeQuotes(w.word)}', event)" class="absolute bottom-2 right-2 bg-pink-50 text-pink-600 w-8 h-8 flex items-center justify-center rounded-full hover:bg-pink-100 opacity-50 group-hover:opacity-100 transition-opacity text-xs">🔊</button>
+                    </div>
+                `).join('');
+            } catch(e) { console.error("renderFavorites error", e); }
+        };
+
+        window.changeMonth = (delta) => {
+            currentMonth += delta;
+            if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+            if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+            window.renderMainContent();
+        };
+
+        window.changeViewingUser = (user) => {
+            viewingUser = user;
+            window.renderCalendar();
+        };
+
+        window.renderCalendar = () => {
+            try {
+                const container = document.getElementById('calendar-grid');
+                const headerContainer = document.getElementById('calendar-header-container');
+                if(!container || !headerContainer) return;
+
+                headerContainer.innerHTML = `
+                    <h2 class="text-xl md:text-2xl font-black text-pink-600 tracking-wide">${currentYear} 年 ${currentMonth + 1} 月</h2>
+                    <select onchange="changeViewingUser(this.value)" class="text-xs md:text-sm font-bold text-pink-700 bg-pink-50 pl-3 pr-7 py-1 md:py-1.5 rounded-full mt-1 border border-pink-200 focus:outline-none focus:ring-2 focus:ring-pink-400 cursor-pointer shadow-sm w-auto max-w-full text-ellipsis overflow-hidden">
+                        <option value="ALL" ${viewingUser === 'ALL' ? 'selected' : ''}>🌍 全部進度</option>
+                        ${globalUsers.map((u, idx) => {
+                            const dispName = usersProfile[u]?.nickname || u;
+                            const circleNum = getCircleNum(idx);
+                            return `<option value="${u}" ${u === viewingUser ? 'selected' : ''}>${circleNum} ${dispName} 的進度</option>`;
+                        }).join('')}
+                    </select>
+                `;
+
+                const firstDay = new Date(currentYear, currentMonth, 1).getDay();
+                const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+                const startPad = firstDay === 0 ? 6 : firstDay - 1;
+
+                let html = `<div class="grid grid-cols-7 gap-1 md:gap-2 mb-2 shrink-0">`;
+                ['一', '二', '三', '四', '五', '六', '日'].forEach((d, idx) => {
+                    const isWeekend = idx >= 5;
+                    html += `<div class="text-center font-bold ${isWeekend ? 'text-rose-500 bg-rose-50' : 'text-pink-700 bg-pink-50'} py-1 md:py-2 text-sm md:text-base rounded-lg md:rounded-xl shadow-sm border border-gray-100">${d}</div>`;
+                });
+                html += `</div><div class="grid grid-cols-7 gap-1 md:gap-2 flex-1 auto-rows-[100px] md:auto-rows-[120px] overflow-y-auto custom-scrollbar pb-4 pr-1 pl-1">`;
+
+                for(let i=0; i<startPad; i++) html += `<div class="bg-white/30 rounded-xl md:rounded-2xl border border-transparent"></div>`;
+
+                for(let d=1; d<=daysInMonth; d++) {
+                    const dateStr = `${currentYear}-${String(currentMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+                    const isToday = dateStr === formatDate(new Date());
+                    const isImportant = importantDates.find(i => i.date === dateStr);
+                    
+                    const headerClass = isToday 
+                        ? 'bg-gradient-to-r from-pink-400 to-rose-400 text-white shadow-md' 
+                        : isImportant 
+                            ? 'bg-gradient-to-r from-orange-400 to-red-400 text-white shadow-md' 
+                            : 'bg-pink-50 text-pink-700';
+
+                    // 計算當日是否有活動
+                    let activeUsers = new Set();
+                    Object.values(allActivities).forEach(act => {
+                        if(act.date === dateStr && (viewingUser === 'ALL' || act.user === viewingUser)) {
+                            activeUsers.add(act.user);
+                        }
+                    });
+
+                    const clickAction = (viewingUser === username || viewingUser === 'ALL') 
+                        ? `openLevelModal('${dateStr}')` 
+                        : '';
+                    
+                    const avatarsHtml = activeUsers.size > 0 ? Array.from(activeUsers).map(u => `
+                        <div class="${getUserColor(u)} w-5 h-5 md:w-6 md:h-6 rounded-full flex items-center justify-center text-[10px] md:text-xs font-bold shadow-sm" title="${usersProfile[u]?.nickname || u}">
+                            ${getAvatarChar(u)}
+                        </div>
+                    `).join('') : '';
+
+                    let cellHTML = `
+                        <div onclick="${clickAction}" class="bg-white border-2 border-pink-100 p-1 md:p-2 rounded-xl md:rounded-2xl shadow-sm flex flex-col transition-all cursor-pointer hover:border-pink-400 hover:shadow-md hover:-translate-y-1 overflow-hidden group relative h-full">
+                            <div class="flex justify-between items-start shrink-0 mb-1 w-full">
+                                <span class="w-5 h-5 md:w-7 md:h-7 flex items-center justify-center rounded-full text-xs md:text-sm font-bold ${headerClass} shrink-0">${d}</span>
+                                ${isImportant ? `<span class="text-xs md:text-sm drop-shadow-sm group-hover:scale-125 transition-transform shrink-0" title="${isImportant.title}">🔥</span>` : ''}
+                            </div>
+                            <div class="flex flex-wrap justify-start gap-1 w-full mt-1 overflow-y-auto custom-scrollbar">
+                                ${avatarsHtml}
+                            </div>
+                        </div>
+                    `;
+
+                    html += cellHTML;
+                }
+                html += `</div>`;
+                container.innerHTML = html;
+            } catch(e) { console.error("renderCalendar error", e); }
+        };
+
+        window.renderMainContent = () => {
+            try {
+                if(window.renderCalendar) window.renderCalendar();
+                if(window.renderFavorites) window.renderFavorites();
+            } catch(e) { console.error("renderMainContent error", e); }
+        };
+
         // ==========================================
         //  全新學習流程：選擇 Level 與 學習列表
         // ==========================================
@@ -1027,14 +1214,15 @@
                 document.getElementById('level-modal-date').innerText = `選擇日期: ${dateStr}`;
                 modalState.date = dateStr;
                 
+                // 繪製等級按鈕
                 const levelContainer = document.getElementById('level-buttons-container');
-                const safeLevels = LEVELS || [];
-                levelContainer.innerHTML = safeLevels.map(lvl => `<button onclick="startLearning('${lvl}')" class="py-4 rounded-xl border-2 border-pink-200 text-pink-600 font-black text-lg hover:bg-pink-500 hover:text-white transition-all bg-white shadow-sm hover:scale-[1.02]">${lvl}</button>`).join('');
+                levelContainer.innerHTML = LEVELS.map(lvl => `<button onclick="startLearning('${lvl}')" class="py-4 rounded-xl border-2 border-pink-200 text-pink-600 font-black text-lg hover:bg-pink-500 hover:text-white transition-all bg-white shadow-sm hover:scale-[1.02]">${lvl}</button>`).join('');
                 
+                // 檢查是否有任一等級有學習進度，如果有，顯示複習與測驗按鈕
                 let hasAnyProgress = false;
-                let currentSelectedLevel = modalState.level || safeLevels[0] || 'Level 1'; 
+                let currentSelectedLevel = modalState.level || LEVELS[0]; 
 
-                safeLevels.forEach(lvl => {
+                LEVELS.forEach(lvl => {
                     const docId = `${username}_${lvl}`;
                     if(allProgress[docId] && allProgress[docId].lastIndex > 0) hasAnyProgress = true;
                 });
@@ -1046,7 +1234,7 @@
                         <p class="text-xs text-center font-bold text-gray-400 mb-1">您已有學習紀錄，可進行隨堂測驗或複習 👇</p>
                         <div class="flex gap-2">
                             <select id="action-level-select" class="w-1/3 px-2 py-2 rounded-lg border border-gray-300 font-bold text-pink-600 focus:outline-none">
-                                ${safeLevels.map(lvl => `<option value="${lvl}" ${lvl === currentSelectedLevel ? 'selected' : ''}>${lvl}</option>`).join('')}
+                                ${LEVELS.map(lvl => `<option value="${lvl}" ${lvl === currentSelectedLevel ? 'selected' : ''}>${lvl}</option>`).join('')}
                             </select>
                             <button onclick="startQuiz('level', document.getElementById('action-level-select').value)" class="flex-1 py-2 rounded-lg font-black text-white bg-rose-500 hover:bg-rose-600 shadow-sm transition-all text-sm md:text-base">
                                 📝 模擬測驗
@@ -1072,7 +1260,8 @@
                 
                 const levelWords = Object.values(allVocab).filter(v => v.level === level).sort((a,b) => a.index - b.index);
                 
-                currentLearningBatch = levelWords.slice(currentIndex, currentIndex + 20); // 每次改為 20 個
+                // 每次抽 20 個單字
+                currentLearningBatch = levelWords.slice(currentIndex, currentIndex + 20);
                 
                 if(currentLearningBatch.length === 0) {
                     alert(`恭喜！您已學完 ${level} 的所有題庫單字！`);
@@ -1091,6 +1280,7 @@
             } catch(e) { console.error("startLearning error", e); }
         };
 
+        // 艾賓浩斯智能複習
         window.startEbbinghausReview = (level) => {
             try {
                 const progressDocId = `${username}_${level}`;
@@ -1104,18 +1294,20 @@
                 }
 
                 let reviewBatch = [];
+                // 邏輯：抽取 40% 最新, 30% 最久, 30% 中間 (總數 20)
                 const targetCount = 20;
                 if (learnedWords.length <= targetCount) {
                     reviewBatch = [...learnedWords];
                 } else {
-                    const numNew = Math.floor(targetCount * 0.4); 
-                    const numOld = Math.floor(targetCount * 0.3); 
-                    const numMid = targetCount - numNew - numOld; 
+                    const numNew = Math.floor(targetCount * 0.4); // 8
+                    const numOld = Math.floor(targetCount * 0.3); // 6
+                    const numMid = targetCount - numNew - numOld; // 6
 
                     const newest = learnedWords.slice(-numNew);
                     const oldest = learnedWords.slice(0, numOld);
                     const middlePool = learnedWords.slice(numOld, learnedWords.length - numNew);
                     
+                    // 隨機抽中間
                     const middleSelected = middlePool.sort(() => 0.5 - Math.random()).slice(0, numMid);
                     
                     reviewBatch = [...newest, ...oldest, ...middleSelected].sort((a,b) => a.index - b.index);
@@ -1129,7 +1321,7 @@
                 document.getElementById('learning-modal-title-badge').innerText = `🧠 ${level} 智能複習 (${reviewBatch.length} 字)`;
                 
                 closeGlobalModal('level-select-modal');
-                closeGlobalModal('complete-modal'); // If called from completion screen
+                closeGlobalModal('complete-modal');
                 renderLearningPage();
                 openGlobalModal('learning-modal');
             } catch(e) { console.error("startEbbinghausReview error", e); }
@@ -1187,6 +1379,7 @@
                 
                 document.getElementById('learning-content').innerHTML = html;
                 
+                // 更新分頁按鈕狀態
                 const totalPages = Math.ceil(currentLearningBatch.length / 10);
                 document.getElementById('learning-page-indicator').innerText = `頁次 ${currentPageIndex + 1} / ${totalPages}`;
                 
@@ -1221,8 +1414,8 @@
             const totalPages = Math.ceil(currentLearningBatch.length / 10);
             
             if(currentPageIndex >= totalPages - 1) {
-                // 強制進入測驗
-                alert("進入隨機測驗！必須完成測驗，系統才會記錄進度喔！");
+                // 強制進入測驗，不先存進度
+                alert("進入隨機測驗！必須完成該單元全數 20 題的測驗，系統才會記錄進度喔！");
                 startQuiz('post_learning', modalState.level);
             } else {
                 currentPageIndex++;
@@ -1237,8 +1430,10 @@
             try {
                 let pool = [];
                 if (mode === 'post_learning') {
+                    // 剛學完的 20 個字
                     pool = [...currentLearningBatch];
                 } else if (mode === 'level') {
+                    // 從該 Level 已學過的挑選 20 題
                     const progressDocId = `${username}_${level}`;
                     const learnedCount = allProgress[progressDocId]?.lastIndex || 0;
                     const levelWords = Object.values(allVocab).filter(v => v.level === level).sort((a,b) => a.index - b.index);
@@ -1247,13 +1442,14 @@
                         alert("已學習的單字數量不足，無法進行測驗！（至少需要 4 個單字）");
                         return;
                     }
-                    pool = pool.sort(() => 0.5 - Math.random()).slice(0, 20); // 隨機抽 20 題
+                    // 隨機抽最多 20 題
+                    pool = pool.sort(() => 0.5 - Math.random()).slice(0, 20);
                 }
 
                 quizState = {
                     level: level,
                     mode: mode,
-                    questions: pool.sort(() => 0.5 - Math.random()), 
+                    questions: pool.sort(() => 0.5 - Math.random()), // 打亂出題順序
                     currentIndex: 0,
                     correct: 0,
                     wrongWords: []
@@ -1273,6 +1469,7 @@
                 const total = quizState.questions.length;
                 const current = quizState.currentIndex;
                 
+                // Update Progress bar
                 const pct = (current / total) * 100;
                 document.getElementById('quiz-progress-bar').style.width = `${pct}%`;
                 document.getElementById('quiz-progress-badge').innerText = `第 ${current + 1} / ${total} 題`;
@@ -1281,6 +1478,7 @@
                 const correctWordStr = wordObj.word;
                 const safeCorrectWord = escapeQuotes(correctWordStr);
 
+                // Generate 3 wrong options from ALL vocab
                 let allOthers = Object.values(allVocab).filter(v => v.word !== correctWordStr);
                 allOthers = allOthers.sort(() => 0.5 - Math.random()).slice(0, 3);
                 
@@ -1288,6 +1486,7 @@
 
                 let questionHtml = '';
                 if (wordObj.sentence) {
+                    // 挖空改為連續底線 (實線效果)
                     const regex = new RegExp(`\\b${correctWordStr}\\b`, 'gi');
                     const blankedSentence = wordObj.sentence.replace(regex, '________');
                     
@@ -1334,6 +1533,7 @@
 
         window.checkQuizAnswer = async (btn, selectedWord, correctWord) => {
             try {
+                // Disable all buttons
                 const btns = document.querySelectorAll('.quiz-option-btn');
                 btns.forEach(b => {
                     b.disabled = true;
@@ -1371,11 +1571,11 @@
                 if (exp) exp.classList.remove('hidden');
                 
                 const senDisp = document.getElementById('quiz-sentence-display');
-                if (senDisp && currentObj.sentence) senDisp.classList.add('hidden'); // 隱藏挖空
+                if (senDisp && currentObj.sentence) senDisp.classList.add('hidden'); // 隱藏挖空，直接看解析
                 
                 document.getElementById('quiz-next-btn-container').classList.remove('hidden');
 
-                // 朗讀完整句子或單字 (只在這裡播一次)
+                // 朗讀完整句子或單字
                 if (currentObj.sentence) {
                     playAudio(currentObj.sentence, null);
                 } else {
@@ -1394,90 +1594,91 @@
         };
 
         window.finishQuiz = async () => {
-            try {
-                const total = quizState.questions.length;
-                const correct = quizState.correct;
-                const score = correct; 
+            const total = quizState.questions.length;
+            const correct = quizState.correct;
+            const score = correct; 
 
-                // 如果是剛學習完的測驗 (post_learning)，此時才寫入進度！
-                if (quizState.mode === 'post_learning') {
-                    const progressDocId = `${username}_${quizState.level}`;
-                    const currentIndex = allProgress[progressDocId]?.lastIndex || 0;
-                    
-                    if (!isReviewMode) {
-                        const newIndex = currentIndex + currentLearningBatch.length;
-                        try {
-                            await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'VocabProgress', progressDocId), {
-                                user: username,
-                                level: quizState.level,
-                                lastIndex: newIndex,
-                                updatedAt: new Date().toISOString()
-                            }, { merge: true });
-                        } catch(e) { console.error(e); }
-                    }
-                    
-                    const activityId = `${username}_${modalState.date}_${Date.now()}`;
+            // 如果是剛學習完的測驗 (post_learning)，此時才寫入進度！
+            if (quizState.mode === 'post_learning') {
+                const progressDocId = `${username}_${quizState.level}`;
+                const currentIndex = allProgress[progressDocId]?.lastIndex || 0;
+                
+                if (!isReviewMode) {
+                    const newIndex = currentIndex + currentLearningBatch.length;
                     try {
-                        await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'VocabActivity', activityId), {
+                        await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'VocabProgress', progressDocId), {
                             user: username,
-                            date: modalState.date,
                             level: quizState.level,
-                            wordsLearned: currentLearningBatch.length,
-                            timestamp: new Date().toISOString()
-                        });
+                            lastIndex: newIndex,
+                            updatedAt: new Date().toISOString()
+                        }, { merge: true });
                     } catch(e) { console.error(e); }
                 }
-
-                // 儲存錯題 (永遠不刪除，只需新增)
-                if (quizState.wrongWords.length > 0) {
-                    try {
-                        for(let w of quizState.wrongWords) {
-                            const weakId = `${username}_${w.id}`;
-                            await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'VocabWeakness', weakId), {
-                                user: username,
-                                wordId: w.id,
-                                wordObj: w,
-                                addedAt: new Date().toISOString()
-                            }, { merge: true });
-                        }
-                    } catch(e) { console.error("Error saving weaknesses", e); }
-                }
-
-                // 計算評價與更新最佳成績
-                let grade = 'C 級';
-                let icon = '🎯';
-                let msg = '再接再厲！錯題已經幫您整理到集中營囉。';
                 
-                if (score >= total) {
-                    grade = 'S 級'; icon = '👑'; msg = '太神啦！完美無瑕！完全掌握。';
-                } else if (score >= total - 3) {
-                    grade = 'A 級'; icon = '🥇'; msg = '非常優秀！只差一點點就完美了。';
-                } else if (score >= total * 0.6) {
-                    grade = 'B 級'; icon = '🥈'; msg = '表現不錯！請去錯題集中營複習一下喔。';
-                }
+                const activityId = `${username}_${modalState.date}_${Date.now()}`;
+                try {
+                    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'VocabActivity', activityId), {
+                        user: username,
+                        date: modalState.date,
+                        level: quizState.level,
+                        wordsLearned: currentLearningBatch.length,
+                        timestamp: new Date().toISOString()
+                    });
+                } catch(e) { console.error(e); }
+            }
 
-                if (quizState.mode === 'level' || quizState.mode === 'post_learning') {
-                    const progressDocId = `${username}_${quizState.level}`;
-                    const currentBest = allProgress[progressDocId]?.bestScore || 0;
-                    if (score > currentBest) {
-                        try {
-                            await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'VocabProgress', progressDocId), {
-                                bestScore: score,
-                                updatedAt: new Date().toISOString()
-                            }, { merge: true });
-                            msg += '<br><span class="text-rose-500 font-bold mt-2 inline-block">🚀 最高紀錄已更新！</span>';
-                        } catch(e) {}
+            // 儲存錯題 (永遠不刪除，只需新增)
+            if (quizState.wrongWords.length > 0) {
+                try {
+                    for(let w of quizState.wrongWords) {
+                        const weakId = `${username}_${w.id}`;
+                        await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'VocabWeakness', weakId), {
+                            user: username,
+                            wordId: w.id,
+                            wordObj: w,
+                            addedAt: new Date().toISOString()
+                        }, { merge: true });
                     }
-                }
+                } catch(e) { console.error("Error saving weaknesses", e); }
+            }
 
+            // 計算評價與更新最佳成績
+            let grade = 'C 級';
+            let icon = '🎯';
+            let msg = '再接再厲！錯題已經幫您整理到集中營囉。';
+            
+            if (score >= total) {
+                grade = 'S 級'; icon = '👑'; msg = '太神啦！完美無瑕！完全掌握。';
+            } else if (score >= total - 3) {
+                grade = 'A 級'; icon = '🥇'; msg = '非常優秀！只差一點點就完美了。';
+            } else if (score >= total * 0.6) {
+                grade = 'B 級'; icon = '🥈'; msg = '表現不錯！請去錯題集中營複習一下喔。';
+            }
+
+            // If it's a Level Quiz (not just recent batch), update the best score
+            if (quizState.mode === 'level' || quizState.mode === 'post_learning') {
+                const progressDocId = `${username}_${quizState.level}`;
+                const currentBest = allProgress[progressDocId]?.bestScore || 0;
+                if (score > currentBest) {
+                    try {
+                        await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'VocabProgress', progressDocId), {
+                            bestScore: score,
+                            updatedAt: new Date().toISOString()
+                        }, { merge: true });
+                        msg += '<br><span class="text-rose-500 font-bold mt-2 inline-block">🚀 最高紀錄已更新！</span>';
+                    } catch(e) {}
+                }
+            }
+
+            try {
                 document.getElementById('quiz-result-icon').innerText = icon;
                 document.getElementById('quiz-result-grade').innerText = grade;
                 document.getElementById('quiz-result-score').innerText = `答對 ${correct} / ${total} 題`;
                 document.getElementById('quiz-result-msg').innerHTML = msg;
+            } catch(e) {}
 
-                closeGlobalModal('quiz-modal');
-                openGlobalModal('quiz-result-modal');
-            } catch(e) { console.error("finishQuiz error", e); }
+            closeGlobalModal('quiz-modal');
+            openGlobalModal('quiz-result-modal');
         };
 
         // ==========================================
@@ -1497,17 +1698,17 @@
                         </div>
                     `;
                 } else {
+                    // 依照 Level 分類
                     const weakByLevel = {};
-                    const safeLevels = LEVELS || [];
-                    safeLevels.forEach(l => weakByLevel[l] = []);
+                    LEVELS.forEach(l => weakByLevel[l] = []);
                     myWeaknesses.forEach(w => {
                         if (weakByLevel[w.wordObj.level]) weakByLevel[w.wordObj.level].push(w);
                     });
 
                     let html = '<div class="space-y-8">';
-                    safeLevels.forEach(lvl => {
+                    LEVELS.forEach(lvl => {
                         const weakWords = weakByLevel[lvl];
-                        if (weakWords && weakWords.length > 0) {
+                        if (weakWords.length > 0) {
                             html += `
                                 <div>
                                     <h3 class="text-xl font-black text-red-600 mb-4 border-b-2 border-red-200 pb-2 pl-2 border-l-4 border-l-red-500">${lvl} <span class="text-sm font-bold text-gray-400 ml-2">共 ${weakWords.length} 題</span></h3>
@@ -1564,13 +1765,11 @@
                 if(!header || !tbody) return;
                 
                 let headerHtml = `<th class="p-3 bg-indigo-100 sticky left-0 z-10">學習者</th>`;
-                const safeLevels = LEVELS || [];
-                safeLevels.forEach(lvl => headerHtml += `<th class="p-3 whitespace-nowrap">${lvl}</th>`);
+                LEVELS.forEach(lvl => headerHtml += `<th class="p-3 whitespace-nowrap">${lvl}</th>`);
                 header.innerHTML = headerHtml;
 
                 let bodyHtml = '';
-                const safeUsers = globalUsers || [];
-                safeUsers.forEach(u => {
+                globalUsers.forEach(u => {
                     const dispName = usersProfile[u]?.nickname || u;
                     bodyHtml += `<tr class="hover:bg-indigo-50 transition-colors">`;
                     bodyHtml += `<td class="p-3 font-black text-gray-800 bg-white sticky left-0 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] flex items-center gap-2">
@@ -1578,7 +1777,7 @@
                                     ${dispName}
                                  </td>`;
                     
-                    safeLevels.forEach(lvl => {
+                    LEVELS.forEach(lvl => {
                         const score = allProgress[`${u}_${lvl}`]?.bestScore;
                         if (score !== undefined) {
                             let colorClass = 'text-gray-600 font-bold';
@@ -1620,7 +1819,7 @@
                     usersProfile = {};
                 }
                 if(!username && window.renderLogin) window.renderLogin();
-            }, (err) => console.warn("設定檔監聽失敗:", err));
+            });
         };
 
         const setupListeners = () => {
@@ -1668,7 +1867,6 @@
                 }
                 if(username) {
                     try { window.renderSidebar(); } catch(e) { console.error(e); }
-                    try { window.renderMainContent(); } catch(e) { console.error(e); }
                 }
             }, errHandler);
 
@@ -1687,8 +1885,12 @@
             unsubVocab = onSnapshot(vocabCol, (snap) => {
                 allVocab = {};
                 snap.forEach(docSnap => allVocab[docSnap.id] = docSnap.data());
-                if(username && document.getElementById('progress-modal') && !document.getElementById('progress-modal').classList.contains('hidden')) {
-                    try { window.openProgressModal(); } catch(e) { console.error(e); }
+                if(username) {
+                    try {
+                        const progressModal = document.getElementById('progress-modal');
+                        if(progressModal && !progressModal.classList.contains('hidden')) window.openProgressModal();
+                        window.renderMainContent(); // Ensure calendar re-renders if needed
+                    } catch(e) {}
                 }
             }, errHandler);
 
@@ -1752,6 +1954,7 @@
                 window.renderApp();
             } catch (e) { console.error("renderApp error", e); }
             
+            // 初始化發音語音
             try {
                 initVoice();
             } catch (e) { console.error("initVoice error", e); }
