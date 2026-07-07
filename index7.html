@@ -145,7 +145,6 @@
         let currentYear = new Date().getFullYear();
         let currentMonth = new Date().getMonth(); 
         
-        // 學習模式分頁狀態
         let currentLearningBatch = []; // 每次改為 20 個
         let currentPageIndex = 0;      
         let isReviewMode = false;      
@@ -191,48 +190,22 @@
 
         const escapeQuotes = (str) => {
             if(!str) return '';
-            return str.replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/\n/g, ' ');
+            return str.replace(/'/g, "\\'").replace(/"/g, '&quot;');
         };
 
-        // 初始化與尋找女性/真人語音
         const initVoice = () => {
             if (!('speechSynthesis' in window)) return;
             const voices = speechSynthesis.getVoices();
-            if (voices.length === 0) return; // Wait for onvoiceschanged
             femaleVoice = voices.find(v => v.lang.startsWith('en') && v.name.includes('Google US English')) ||
                           voices.find(v => v.lang.startsWith('en') && v.name.includes('Samantha')) ||
                           voices.find(v => v.lang.startsWith('en') && v.name.includes('Zira')) ||
                           voices.find(v => v.lang.startsWith('en') && (v.name.toLowerCase().includes('female') || v.name.toLowerCase().includes('girl'))) ||
                           voices.find(v => v.lang.startsWith('en-US')) || 
-                          voices.find(v => v.lang.startsWith('en')) || voices[0];
+                          voices.find(v => v.lang.startsWith('en'));
         };
-        if ('speechSynthesis' in window) {
-            window.speechSynthesis.onvoiceschanged = initVoice;
-            initVoice(); // Try immediately
+        if ('speechSynthesis' in window && speechSynthesis.onvoiceschanged !== undefined) {
+            speechSynthesis.onvoiceschanged = initVoice;
         }
-
-        // 統一發音管理
-        window.playAudio = (text, e) => {
-            if(e) e.stopPropagation();
-            if(!text) return;
-            
-            if ('speechSynthesis' in window) {
-                // 取消正在播放的聲音，避免佇列卡住
-                window.speechSynthesis.cancel(); 
-                
-                if (!femaleVoice) initVoice(); // 雙重確認語音已載入
-                
-                const utterance = new SpeechSynthesisUtterance(text);
-                utterance.lang = 'en-US';
-                if (femaleVoice) {
-                    utterance.voice = femaleVoice;
-                }
-                utterance.rate = 0.9;
-                utterance.pitch = 1.1; 
-                
-                window.speechSynthesis.speak(utterance);
-            }
-        };
 
         // ==========================================
         //  UI 渲染函式 - 系統框架與登入
@@ -324,10 +297,6 @@
                         <div class="flex items-center gap-2 md:gap-3 pr-2 flex-wrap justify-end">
                             ${isAdmin ? `<button onclick="window.open('migration_tool.html', '_blank')" class="bg-gradient-to-r from-amber-400 to-orange-400 text-white font-bold px-3 py-1.5 rounded-lg shadow-sm hover:scale-105 transition-transform text-sm shrink-0 hidden lg:block">⚙️ 題庫管理</button>` : ''}
                             
-                            <button onclick="openScoreBoard()" class="font-bold text-indigo-600 bg-indigo-50 px-2 md:px-3 py-1.5 rounded-lg border border-indigo-200 shadow-sm hover:bg-indigo-100 transition-colors text-sm flex items-center gap-1 shrink-0">
-                                📊 <span class="hidden md:inline">成績總覽</span>
-                            </button>
-
                             <button onclick="openWeaknessCamp()" class="font-bold text-red-600 bg-red-50 px-2 md:px-3 py-1.5 rounded-lg border border-red-200 shadow-sm hover:bg-red-100 transition-colors text-sm flex items-center gap-1 shrink-0">
                                 🔥 <span class="hidden md:inline">錯題集中營</span>
                             </button>
@@ -395,6 +364,7 @@
             try {
                 const container = document.getElementById('modals-container');
                 container.innerHTML = `
+                    <!-- 輸入密碼登入 Modal -->
                     <div id="login-pwd-modal" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm hidden items-center justify-center z-[70] p-4 transition-opacity duration-200 opacity-0">
                         <div class="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden border-4 border-pink-300 transform scale-95 transition-transform duration-200 flex flex-col p-6">
                             <h2 class="text-2xl font-black text-pink-600 mb-4 text-center">🔐 安全登入</h2>
@@ -408,6 +378,7 @@
                         </div>
                     </div>
 
+                    <!-- 註冊/編輯個人資料卡 Modal -->
                     <div id="profile-edit-modal" class="fixed inset-0 bg-gray-900/70 backdrop-blur-sm hidden items-center justify-center z-[80] p-4 transition-opacity duration-200 opacity-0">
                         <div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden border-4 border-pink-300 transform scale-95 transition-transform duration-200 flex flex-col" style="max-height: 95vh;">
                             <div class="bg-gradient-to-r from-pink-400 to-rose-400 p-4 flex justify-between items-center text-white shrink-0">
@@ -462,6 +433,7 @@
                         </div>
                     </div>
 
+                    <!-- 選擇單字等級 Modal -->
                     <div id="level-select-modal" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm hidden items-center justify-center z-[70] p-4 transition-opacity duration-200 opacity-0" onclick="if(event.target === this) closeGlobalModal('level-select-modal')">
                         <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden border-4 border-pink-300 transform scale-95 transition-transform duration-200 flex flex-col p-6 relative">
                             <div class="absolute top-4 left-4 text-3xl opacity-20 pointer-events-none">🌸</div>
@@ -471,15 +443,18 @@
                             <p class="text-center font-bold text-gray-500 mb-4 text-sm">系統將自動接續您的學習進度！<br><span id="level-modal-date" class="text-xs text-pink-500 bg-pink-50 px-2 py-0.5 rounded mt-2 inline-block shadow-sm"></span></p>
                             
                             <div class="grid grid-cols-2 gap-3 mb-4" id="level-buttons-container">
-                                </div>
+                                <!-- JS 動態填入 -->
+                            </div>
                             
                             <div id="level-actions-container" class="flex flex-col gap-2 mt-4 pt-4 border-t border-gray-100 hidden">
-                                </div>
+                                <!-- JS 動態填入複習/測驗按鈕 -->
+                            </div>
 
                             <button onclick="closeGlobalModal('level-select-modal')" class="mt-4 w-full py-2.5 rounded-xl font-bold text-gray-500 bg-gray-50 border border-gray-200 hover:bg-gray-100">取消</button>
                         </div>
                     </div>
 
+                    <!-- 單字學習 列表 Modal (加寬, 一次 10 題) -->
                     <div id="learning-modal" class="fixed inset-0 bg-gray-900/80 backdrop-blur-sm hidden items-center justify-center z-[80] p-4 transition-opacity duration-200 opacity-0">
                         <div class="bg-white rounded-3xl shadow-2xl w-full max-w-[95vw] lg:max-w-6xl overflow-hidden border-4 border-pink-300 transform scale-95 transition-transform duration-200 flex flex-col h-[90vh]">
                             <div class="bg-gradient-to-r from-pink-400 to-rose-400 p-4 flex justify-between items-center text-white shrink-0">
@@ -487,7 +462,8 @@
                                 <button onclick="closeGlobalModal('learning-modal')" class="hover:bg-white/30 rounded-full w-8 h-8 flex items-center justify-center font-bold text-xl transition-colors">✕</button>
                             </div>
                             <div class="p-4 md:p-6 overflow-y-auto flex-1 custom-scrollbar bg-pink-50/30" id="learning-content">
-                                </div>
+                                <!-- 單字列表動態注入 -->
+                            </div>
                             <div class="p-4 bg-white border-t border-pink-100 flex justify-between items-center shrink-0">
                                 <button onclick="prevPage()" id="btn-prev-page" class="px-5 py-2.5 rounded-xl font-bold text-pink-600 bg-pink-50 hover:bg-pink-100 border border-pink-200 transition-all invisible">◀ 上一頁</button>
                                 <span id="learning-page-indicator" class="font-bold text-gray-500 text-sm bg-gray-100 px-3 py-1 rounded-full"></span>
@@ -496,6 +472,7 @@
                         </div>
                     </div>
 
+                    <!-- 測驗模式 Quiz Modal -->
                     <div id="quiz-modal" class="fixed inset-0 bg-gray-900/80 backdrop-blur-sm hidden items-center justify-center z-[90] p-4 transition-opacity duration-200 opacity-0" style="perspective: 1000px;">
                         <div class="bg-white rounded-3xl shadow-2xl w-full max-w-[95vw] lg:max-w-6xl overflow-hidden border-4 border-rose-300 transform scale-95 transition-transform duration-200 flex flex-col min-h-[85vh]">
                             <div class="bg-gradient-to-r from-rose-400 to-pink-500 p-4 flex justify-between items-center text-white shrink-0">
@@ -503,17 +480,20 @@
                                 <button onclick="closeGlobalModal('quiz-modal')" class="hover:bg-white/30 rounded-full w-8 h-8 flex items-center justify-center font-bold text-xl transition-colors">✕</button>
                             </div>
                             
+                            <!-- Progress Bar -->
                             <div class="w-full bg-gray-100 h-2">
                                 <div id="quiz-progress-bar" class="bg-rose-400 h-2 transition-all duration-300" style="width: 0%"></div>
                             </div>
 
                             <div class="p-6 md:p-10 flex-1 flex flex-col items-center justify-center bg-rose-50/20 relative overflow-y-auto custom-scrollbar">
                                 <div id="quiz-question-container" class="text-center w-full max-w-4xl mx-auto flex flex-col justify-center flex-1">
-                                    </div>
+                                    <!-- JS 動態注入題目與選項 -->
+                                </div>
                             </div>
                         </div>
                     </div>
 
+                    <!-- 測驗結果 Modal -->
                     <div id="quiz-result-modal" class="fixed inset-0 bg-gray-900/90 backdrop-blur-md hidden items-center justify-center z-[100] p-4 transition-opacity duration-200 opacity-0">
                         <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden border-4 border-yellow-300 transform scale-95 transition-transform duration-200 flex flex-col p-8 text-center relative bg-gradient-to-b from-yellow-50 to-white">
                             <div id="quiz-result-icon" class="text-7xl mb-2 drop-shadow-md animate-bounce">🏆</div>
@@ -533,19 +513,25 @@
                         </div>
                     </div>
 
+                    <!-- 錯題集中營 Modal -->
                     <div id="weakness-modal" class="fixed inset-0 bg-gray-900/80 backdrop-blur-sm hidden items-center justify-center z-[80] p-4 transition-opacity duration-200 opacity-0" onclick="if(event.target === this) closeGlobalModal('weakness-modal')">
                         <div class="bg-white rounded-[2rem] shadow-2xl w-full max-w-[95vw] lg:max-w-6xl overflow-hidden border-4 border-red-300 transform scale-95 transition-transform duration-200 flex flex-col relative min-h-[90vh]">
                             <div class="bg-gradient-to-r from-red-500 to-rose-500 p-4 flex justify-between items-center text-white shrink-0">
                                 <div class="flex items-center gap-4">
                                     <h2 class="text-xl font-bold flex items-center gap-2">🔥 錯題集中營</h2>
+                                    <button onclick="openScoreBoard()" class="bg-white/20 hover:bg-white/30 text-white border border-white/50 px-3 py-1.5 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center gap-1">
+                                        📊 測驗成績總覽
+                                    </button>
                                 </div>
                                 <button onclick="closeGlobalModal('weakness-modal')" class="hover:bg-white/20 rounded-full w-8 h-8 flex items-center justify-center font-bold text-xl">✕</button>
                             </div>
                             <div class="p-4 md:p-6 bg-red-50/30 overflow-y-auto flex-1 custom-scrollbar" id="weakness-content">
-                                </div>
+                                <!-- JS 動態注入錯題 -->
+                            </div>
                         </div>
                     </div>
 
+                    <!-- 成績總覽表 Modal -->
                     <div id="score-board-modal" class="fixed inset-0 bg-gray-900/80 backdrop-blur-sm hidden items-center justify-center z-[110] p-4 transition-opacity duration-200 opacity-0" onclick="if(event.target === this) closeGlobalModal('score-board-modal')">
                         <div class="bg-white rounded-3xl shadow-2xl w-full max-w-5xl overflow-hidden border-4 border-indigo-300 transform scale-95 transition-transform duration-200 flex flex-col min-h-[50vh]">
                             <div class="bg-gradient-to-r from-indigo-500 to-purple-600 p-4 flex justify-between items-center text-white shrink-0">
@@ -556,15 +542,18 @@
                                 <table class="w-full text-center border-collapse bg-white shadow-sm rounded-xl overflow-hidden">
                                     <thead class="bg-indigo-100 text-indigo-800 border-b-2 border-indigo-200">
                                         <tr id="score-board-header">
-                                            </tr>
+                                            <!-- JS 注入 Header -->
+                                        </tr>
                                     </thead>
                                     <tbody id="score-board-body" class="divide-y divide-gray-100">
-                                        </tbody>
+                                        <!-- JS 注入 Data -->
+                                    </tbody>
                                 </table>
                             </div>
                         </div>
                     </div>
 
+                    <!-- 瀑布流總覽 Modal -->
                     <div id="waterfall-modal" class="fixed inset-0 bg-gray-900/80 backdrop-blur-sm hidden items-center justify-center z-[80] p-4 transition-opacity duration-200 opacity-0" onclick="if(event.target === this) closeGlobalModal('waterfall-modal')">
                         <div class="bg-white rounded-[2rem] shadow-2xl w-full max-w-[95vw] lg:max-w-6xl overflow-hidden border-4 border-pink-300 transform scale-95 transition-transform duration-200 flex flex-col relative h-[90vh]">
                             <div class="bg-gradient-to-r from-pink-500 to-rose-500 p-4 flex justify-between items-center text-white shrink-0">
@@ -572,10 +561,12 @@
                                 <button onclick="closeGlobalModal('waterfall-modal')" class="hover:bg-white/20 rounded-full w-8 h-8 flex items-center justify-center font-bold text-xl">✕</button>
                             </div>
                             <div class="p-4 md:p-6 bg-pink-50/30 overflow-y-auto flex-1 custom-scrollbar" id="waterfall-content">
-                                </div>
+                                <!-- 瀑布流卡片注入處 -->
+                            </div>
                         </div>
                     </div>
 
+                    <!-- 進度追蹤 Modal -->
                     <div id="progress-modal" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm hidden items-center justify-center z-[70] p-4 transition-opacity duration-200 opacity-0" onclick="if(event.target === this) closeGlobalModal('progress-modal')">
                         <div class="bg-white rounded-[2rem] shadow-2xl w-full max-w-[95vw] lg:max-w-6xl overflow-hidden border-4 border-rose-300 transform scale-95 transition-transform duration-200 flex flex-col relative min-h-[85vh]">
                             <div class="bg-gradient-to-r from-rose-400 to-pink-500 p-4 flex justify-between items-center text-white shrink-0">
@@ -583,10 +574,12 @@
                                 <button onclick="closeGlobalModal('progress-modal')" class="hover:bg-white/20 rounded-full w-8 h-8 flex items-center justify-center font-bold text-xl">✕</button>
                             </div>
                             <div class="p-6 bg-rose-50/30 overflow-y-auto flex-1 custom-scrollbar" id="progress-content">
-                                </div>
+                                <!-- JS 動態注入 -->
+                            </div>
                         </div>
                     </div>
 
+                    <!-- 瀏覽公開資料卡 Modal -->
                     <div id="view-profile-modal" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm hidden items-center justify-center z-[80] p-4 transition-opacity duration-200 opacity-0" onclick="if(event.target === this) closeGlobalModal('view-profile-modal')">
                         <div class="bg-white rounded-[2rem] shadow-2xl w-full max-w-sm overflow-hidden transform scale-95 transition-transform duration-200 flex flex-col relative border-4 border-pink-200">
                             <button onclick="closeGlobalModal('view-profile-modal')" class="absolute top-4 right-4 bg-black/20 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold z-10 hover:bg-black/40">✕</button>
@@ -983,6 +976,218 @@
             setupListeners();    
         };
 
+        window.openPublicProfile = (name) => {
+            try {
+                const prof = usersProfile[name] || {};
+                document.getElementById('vp-nickname').innerText = prof.nickname || name;
+                document.getElementById('vp-name').innerText = `@${name}`;
+                document.getElementById('vp-target').innerText = prof.target || '未設定';
+                document.getElementById('vp-motto').innerText = prof.motto ? `「${prof.motto}」` : '默默努力中...';
+                document.getElementById('vp-birthday').innerText = prof.birthday ? `🎂 ${prof.birthday}` : '';
+
+                const imgEl = document.getElementById('vp-photo');
+                const fallbackEl = document.getElementById('vp-avatar-fallback');
+                
+                if(prof.photo) {
+                    imgEl.src = prof.photo;
+                    imgEl.style.display = 'block';
+                    fallbackEl.style.display = 'none';
+                } else {
+                    imgEl.style.display = 'none';
+                    fallbackEl.innerText = getAvatarChar(name);
+                    fallbackEl.style.display = 'flex';
+                    fallbackEl.className = `w-24 h-24 rounded-full border-4 border-white shadow-lg flex items-center justify-center text-3xl font-black mb-3 ${getUserColor(name)}`;
+                }
+                openGlobalModal('view-profile-modal');
+            } catch(e) { console.error("openPublicProfile error", e); }
+        };
+
+        // ==========================================
+        //  UI 渲染函式 - 月曆與最愛單字
+        // ==========================================
+        window.renderSidebar = () => {
+            try {
+                const container = document.getElementById('sidebar-countdowns');
+                if(!container) return;
+                const examDaysLeft = getDaysLeft(EXAM_DATE);
+                let html = `
+                    <div class="bg-gradient-to-br from-pink-400 to-rose-500 rounded-2xl p-5 text-center shadow-lg text-white mb-4 transform hover:scale-[1.02] transition-transform border border-pink-300 shrink-0 z-10 relative">
+                        <h3 class="text-sm font-bold text-pink-100 mb-1">會考大日子 (2027-05-22)</h3>
+                        <div class="text-5xl font-black drop-shadow-md mb-2">${examDaysLeft >= 0 ? examDaysLeft : 0} <span class="text-xl">天</span></div>
+                        <div class="text-xs bg-black/20 rounded-full inline-block px-3 py-1 font-bold">🎯 決戰時刻</div>
+                    </div>
+                    <h4 class="font-bold text-pink-700 mb-2 flex items-center gap-2 shrink-0 z-10 relative">🗓️ 重要考試里程碑</h4>
+                    <div class="marquee-container flex-1 w-full relative z-0 pb-1">
+                        <div class="marquee-content space-y-3 pt-2">
+                `;
+                const sortedDates = [...importantDates].sort((a, b) => new Date(a.date) - new Date(b.date));
+                sortedDates.forEach((item) => {
+                    const days = getDaysLeft(item.date);
+                    if (days >= 0) {
+                        html += `
+                            <div class="bg-white p-3 rounded-xl border border-pink-100 shadow-sm flex justify-between items-center relative overflow-hidden group">
+                                <div class="absolute left-0 top-0 bottom-0 w-1.5 bg-pink-400"></div>
+                                <div class="pl-2">
+                                    <div class="text-sm font-bold text-gray-700">${item.title}</div>
+                                    <div class="text-xs text-gray-400">${item.date}</div>
+                                </div>
+                                <div class="text-right">
+                                    <span class="text-xl font-black ${days <= 7 ? 'text-red-500' : 'text-pink-500'}">${days}</span>
+                                    <span class="text-xs text-gray-500">天</span>
+                                </div>
+                            </div>
+                        `;
+                    }
+                });
+                html += `</div></div>`;
+                container.innerHTML = html;
+            } catch(e) { console.error("renderSidebar error", e); }
+        };
+
+        window.renderChat = () => {
+            try {
+                const container = document.getElementById('chat-messages');
+                if(!container) return;
+                container.innerHTML = chatMessages.map(msg => {
+                    const isMe = msg.user === username;
+                    const displayName = usersProfile[msg.user]?.nickname || msg.user;
+                    return `
+                        <div class="flex flex-col ${isMe ? 'items-end' : 'items-start'}">
+                            <span class="text-[10px] text-gray-400 mb-0.5 px-1">${displayName}</span>
+                            <div class="${isMe ? 'chat-bubble-me' : 'chat-bubble-other'} px-3 py-2 text-gray-700 shadow-sm inline-block max-w-[90%] break-words">
+                                ${msg.text}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                container.scrollTop = container.scrollHeight;
+            } catch(e) { console.error("renderChat error", e); }
+        };
+
+        window.renderFavorites = () => {
+            try {
+                const container = document.getElementById('favorites-feed');
+                if(!container) return;
+                
+                const myFavIds = Object.values(allFavorites).filter(f => f.user === username).map(f => f.wordId);
+                const myFavWords = myFavIds.map(id => allVocab[id]).filter(Boolean);
+                
+                if(myFavWords.length === 0) {
+                    container.innerHTML = `<div class="text-center text-rose-300 font-bold mt-10">尚無收藏的單字<br><span class="text-xs">在學習時點擊愛心即可收藏 ❤️</span></div>`;
+                    return;
+                }
+                
+                container.innerHTML = myFavWords.map(w => `
+                    <div class="bg-white p-3 rounded-xl border border-rose-100 shadow-sm flex flex-col relative group">
+                        <div class="flex justify-between items-start">
+                            <h4 class="font-black text-lg text-gray-800 pr-6">${w.word}</h4>
+                            <button onclick="toggleFavorite('${w.id}', event)" class="absolute top-3 right-3 text-rose-500 hover:scale-125 transition-transform" title="取消收藏">❤️</button>
+                        </div>
+                        <div class="text-sm text-pink-600 font-bold mb-1">${w.pos} ${w.meaning}</div>
+                        <button onclick="playAudio('${escapeQuotes(w.word)}', event)" class="absolute bottom-2 right-2 bg-pink-50 text-pink-600 w-8 h-8 flex items-center justify-center rounded-full hover:bg-pink-100 opacity-50 group-hover:opacity-100 transition-opacity text-xs">🔊</button>
+                    </div>
+                `).join('');
+            } catch(e) { console.error("renderFavorites error", e); }
+        };
+
+        window.changeMonth = (delta) => {
+            currentMonth += delta;
+            if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+            if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+            window.renderMainContent();
+        };
+
+        window.changeViewingUser = (user) => {
+            viewingUser = user;
+            window.renderCalendar();
+        };
+
+        window.renderCalendar = () => {
+            try {
+                const container = document.getElementById('calendar-grid');
+                const headerContainer = document.getElementById('calendar-header-container');
+                if(!container || !headerContainer) return;
+
+                headerContainer.innerHTML = `
+                    <h2 class="text-xl md:text-2xl font-black text-pink-600 tracking-wide">${currentYear} 年 ${currentMonth + 1} 月</h2>
+                    <select onchange="changeViewingUser(this.value)" class="text-xs md:text-sm font-bold text-pink-700 bg-pink-50 pl-3 pr-7 py-1 md:py-1.5 rounded-full mt-1 border border-pink-200 focus:outline-none focus:ring-2 focus:ring-pink-400 cursor-pointer shadow-sm w-auto max-w-full text-ellipsis overflow-hidden">
+                        <option value="ALL" ${viewingUser === 'ALL' ? 'selected' : ''}>🌍 全部進度</option>
+                        ${globalUsers.map((u, idx) => {
+                            const dispName = usersProfile[u]?.nickname || u;
+                            const circleNum = getCircleNum(idx);
+                            return `<option value="${u}" ${u === viewingUser ? 'selected' : ''}>${circleNum} ${dispName} 的進度</option>`;
+                        }).join('')}
+                    </select>
+                `;
+
+                const firstDay = new Date(currentYear, currentMonth, 1).getDay();
+                const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+                const startPad = firstDay === 0 ? 6 : firstDay - 1;
+
+                let html = `<div class="grid grid-cols-7 gap-1 md:gap-2 mb-2 shrink-0">`;
+                ['一', '二', '三', '四', '五', '六', '日'].forEach((d, idx) => {
+                    const isWeekend = idx >= 5;
+                    html += `<div class="text-center font-bold ${isWeekend ? 'text-rose-500 bg-rose-50' : 'text-pink-700 bg-pink-50'} py-1 md:py-2 text-sm md:text-base rounded-lg md:rounded-xl shadow-sm border border-gray-100">${d}</div>`;
+                });
+                html += `</div><div class="grid grid-cols-7 gap-1 md:gap-2 flex-1 auto-rows-[100px] md:auto-rows-[120px] overflow-y-auto custom-scrollbar pb-4 pr-1 pl-1">`;
+
+                for(let i=0; i<startPad; i++) html += `<div class="bg-white/30 rounded-xl md:rounded-2xl border border-transparent"></div>`;
+
+                for(let d=1; d<=daysInMonth; d++) {
+                    const dateStr = `${currentYear}-${String(currentMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+                    const isToday = dateStr === formatDate(new Date());
+                    const isImportant = importantDates.find(i => i.date === dateStr);
+                    
+                    const headerClass = isToday 
+                        ? 'bg-gradient-to-r from-pink-400 to-rose-400 text-white shadow-md' 
+                        : isImportant 
+                            ? 'bg-gradient-to-r from-orange-400 to-red-400 text-white shadow-md' 
+                            : 'bg-pink-50 text-pink-700';
+
+                    // 計算當日是否有活動
+                    let activeUsers = new Set();
+                    Object.values(allActivities).forEach(act => {
+                        if(act.date === dateStr && (viewingUser === 'ALL' || act.user === viewingUser)) {
+                            activeUsers.add(act.user);
+                        }
+                    });
+
+                    const clickAction = (viewingUser === username || viewingUser === 'ALL') 
+                        ? `openLevelModal('${dateStr}')` 
+                        : '';
+                    
+                    const avatarsHtml = viewingUser === 'ALL' && activeUsers.size > 0 ? Array.from(activeUsers).map(u => `
+                        <div class="${getUserColor(u)} w-5 h-5 md:w-6 md:h-6 rounded-full flex items-center justify-center text-[10px] md:text-xs font-bold shadow-sm" title="${usersProfile[u]?.nickname || u}">
+                            ${getAvatarChar(u)}
+                        </div>
+                    `).join('') : '';
+
+                    let cellHTML = `
+                        <div onclick="${clickAction}" class="bg-white border-2 border-pink-100 p-1 md:p-2 rounded-xl md:rounded-2xl shadow-sm flex flex-col transition-all cursor-pointer hover:border-pink-400 hover:shadow-md hover:-translate-y-1 overflow-hidden group relative h-full">
+                            <div class="flex justify-between items-start shrink-0 mb-1 w-full">
+                                <span class="w-5 h-5 md:w-7 md:h-7 flex items-center justify-center rounded-full text-xs md:text-sm font-bold ${headerClass} shrink-0">${d}</span>
+                                ${isImportant ? `<span class="text-xs md:text-sm drop-shadow-sm group-hover:scale-125 transition-transform shrink-0" title="${isImportant.title}">🔥</span>` : ''}
+                            </div>
+                            <div class="flex flex-wrap justify-start gap-1 w-full mt-1 overflow-y-auto custom-scrollbar">
+                                ${avatarsHtml}
+                            </div>
+                        </div>
+                    `;
+
+                    html += cellHTML;
+                }
+                html += `</div>`;
+                container.innerHTML = html;
+            } catch(e) { console.error("renderCalendar error", e); }
+        };
+
+        window.renderMainContent = () => {
+            try {
+                if(window.renderCalendar) window.renderCalendar();
+                if(window.renderFavorites) window.renderFavorites();
+            } catch(e) { console.error("renderMainContent error", e); }
+        };
+
         // ==========================================
         //  全新學習流程：選擇 Level 與 學習列表
         // ==========================================
@@ -991,9 +1196,11 @@
                 document.getElementById('level-modal-date').innerText = `選擇日期: ${dateStr}`;
                 modalState.date = dateStr;
                 
+                // 繪製等級按鈕
                 const levelContainer = document.getElementById('level-buttons-container');
                 levelContainer.innerHTML = LEVELS.map(lvl => `<button onclick="startLearning('${lvl}')" class="py-4 rounded-xl border-2 border-pink-200 text-pink-600 font-black text-lg hover:bg-pink-500 hover:text-white transition-all bg-white shadow-sm hover:scale-[1.02]">${lvl}</button>`).join('');
                 
+                // 檢查是否有任一等級有學習進度，如果有，顯示複習與測驗按鈕
                 let hasAnyProgress = false;
                 let currentSelectedLevel = modalState.level || LEVELS[0]; 
 
@@ -1035,7 +1242,8 @@
                 
                 const levelWords = Object.values(allVocab).filter(v => v.level === level).sort((a,b) => a.index - b.index);
                 
-                currentLearningBatch = levelWords.slice(currentIndex, currentIndex + 20); // 每次改為 20 個
+                // 每次抽 20 個單字
+                currentLearningBatch = levelWords.slice(currentIndex, currentIndex + 20);
                 
                 if(currentLearningBatch.length === 0) {
                     alert(`恭喜！您已學完 ${level} 的所有題庫單字！`);
@@ -1054,6 +1262,7 @@
             } catch(e) { console.error("startLearning error", e); }
         };
 
+        // 艾賓浩斯智能複習
         window.startEbbinghausReview = (level) => {
             try {
                 const progressDocId = `${username}_${level}`;
@@ -1067,18 +1276,20 @@
                 }
 
                 let reviewBatch = [];
+                // 邏輯：抽取 40% 最新, 30% 最久, 30% 中間 (總數 20)
                 const targetCount = 20;
                 if (learnedWords.length <= targetCount) {
                     reviewBatch = [...learnedWords];
                 } else {
-                    const numNew = Math.floor(targetCount * 0.4); 
-                    const numOld = Math.floor(targetCount * 0.3); 
-                    const numMid = targetCount - numNew - numOld; 
+                    const numNew = Math.floor(targetCount * 0.4); // 8
+                    const numOld = Math.floor(targetCount * 0.3); // 6
+                    const numMid = targetCount - numNew - numOld; // 6
 
                     const newest = learnedWords.slice(-numNew);
                     const oldest = learnedWords.slice(0, numOld);
                     const middlePool = learnedWords.slice(numOld, learnedWords.length - numNew);
                     
+                    // 隨機抽中間
                     const middleSelected = middlePool.sort(() => 0.5 - Math.random()).slice(0, numMid);
                     
                     reviewBatch = [...newest, ...oldest, ...middleSelected].sort((a,b) => a.index - b.index);
@@ -1150,6 +1361,7 @@
                 
                 document.getElementById('learning-content').innerHTML = html;
                 
+                // 更新分頁按鈕狀態
                 const totalPages = Math.ceil(currentLearningBatch.length / 10);
                 document.getElementById('learning-page-indicator').innerText = `頁次 ${currentPageIndex + 1} / ${totalPages}`;
                 
@@ -1184,8 +1396,8 @@
             const totalPages = Math.ceil(currentLearningBatch.length / 10);
             
             if(currentPageIndex >= totalPages - 1) {
-                // 強制進入測驗
-                alert("進入隨機測驗！必須完成測驗，系統才會記錄進度喔！");
+                // 強制進入測驗，不先存進度
+                alert("進入隨機測驗！必須完成該單元全數 20 題的測驗，系統才會記錄進度喔！");
                 startQuiz('post_learning', modalState.level);
             } else {
                 currentPageIndex++;
@@ -1200,8 +1412,10 @@
             try {
                 let pool = [];
                 if (mode === 'post_learning') {
+                    // 剛學完的 20 個字
                     pool = [...currentLearningBatch];
                 } else if (mode === 'level') {
+                    // 從該 Level 已學過的挑選 20 題
                     const progressDocId = `${username}_${level}`;
                     const learnedCount = allProgress[progressDocId]?.lastIndex || 0;
                     const levelWords = Object.values(allVocab).filter(v => v.level === level).sort((a,b) => a.index - b.index);
@@ -1210,13 +1424,14 @@
                         alert("已學習的單字數量不足，無法進行測驗！（至少需要 4 個單字）");
                         return;
                     }
-                    pool = pool.sort(() => 0.5 - Math.random()).slice(0, 20); // 隨機抽 20 題
+                    // 隨機抽最多 20 題
+                    pool = pool.sort(() => 0.5 - Math.random()).slice(0, 20);
                 }
 
                 quizState = {
                     level: level,
                     mode: mode,
-                    questions: pool.sort(() => 0.5 - Math.random()), 
+                    questions: pool.sort(() => 0.5 - Math.random()), // 打亂出題順序
                     currentIndex: 0,
                     correct: 0,
                     wrongWords: []
@@ -1236,6 +1451,7 @@
                 const total = quizState.questions.length;
                 const current = quizState.currentIndex;
                 
+                // Update Progress bar
                 const pct = (current / total) * 100;
                 document.getElementById('quiz-progress-bar').style.width = `${pct}%`;
                 document.getElementById('quiz-progress-badge').innerText = `第 ${current + 1} / ${total} 題`;
@@ -1244,6 +1460,7 @@
                 const correctWordStr = wordObj.word;
                 const safeCorrectWord = escapeQuotes(correctWordStr);
 
+                // Generate 3 wrong options from ALL vocab
                 let allOthers = Object.values(allVocab).filter(v => v.word !== correctWordStr);
                 allOthers = allOthers.sort(() => 0.5 - Math.random()).slice(0, 3);
                 
@@ -1251,6 +1468,7 @@
 
                 let questionHtml = '';
                 if (wordObj.sentence) {
+                    // 挖空改為連續底線 (實線效果)
                     const regex = new RegExp(`\\b${correctWordStr}\\b`, 'gi');
                     const blankedSentence = wordObj.sentence.replace(regex, '________');
                     
@@ -1297,6 +1515,7 @@
 
         window.checkQuizAnswer = async (btn, selectedWord, correctWord) => {
             try {
+                // Disable all buttons
                 const btns = document.querySelectorAll('.quiz-option-btn');
                 btns.forEach(b => {
                     b.disabled = true;
@@ -1334,11 +1553,11 @@
                 if (exp) exp.classList.remove('hidden');
                 
                 const senDisp = document.getElementById('quiz-sentence-display');
-                if (senDisp && currentObj.sentence) senDisp.classList.add('hidden'); // 隱藏挖空
+                if (senDisp && currentObj.sentence) senDisp.classList.add('hidden'); // 隱藏挖空，直接看解析
                 
                 document.getElementById('quiz-next-btn-container').classList.remove('hidden');
 
-                // 朗讀完整句子或單字 (只在這裡播一次)
+                // 朗讀完整句子或單字
                 if (currentObj.sentence) {
                     playAudio(currentObj.sentence, null);
                 } else {
@@ -1418,6 +1637,7 @@
                 grade = 'B 級'; icon = '🥈'; msg = '表現不錯！請去錯題集中營複習一下喔。';
             }
 
+            // If it's a Level Quiz (not just recent batch), update the best score
             if (quizState.mode === 'level' || quizState.mode === 'post_learning') {
                 const progressDocId = `${username}_${quizState.level}`;
                 const currentBest = allProgress[progressDocId]?.bestScore || 0;
@@ -1460,6 +1680,7 @@
                         </div>
                     `;
                 } else {
+                    // 依照 Level 分類
                     const weakByLevel = {};
                     LEVELS.forEach(l => weakByLevel[l] = []);
                     myWeaknesses.forEach(w => {
@@ -1646,8 +1867,12 @@
             unsubVocab = onSnapshot(vocabCol, (snap) => {
                 allVocab = {};
                 snap.forEach(docSnap => allVocab[docSnap.id] = docSnap.data());
-                if(username && document.getElementById('progress-modal') && !document.getElementById('progress-modal').classList.contains('hidden')) {
-                    try { window.openProgressModal(); } catch(e) { console.error(e); }
+                if(username) {
+                    try {
+                        const progressModal = document.getElementById('progress-modal');
+                        if(progressModal && !progressModal.classList.contains('hidden')) window.openProgressModal();
+                        window.renderMainContent(); // Ensure calendar re-renders if needed
+                    } catch(e) {}
                 }
             }, errHandler);
 
@@ -1711,6 +1936,7 @@
                 window.renderApp();
             } catch (e) { console.error("renderApp error", e); }
             
+            // 初始化發音語音
             try {
                 initVoice();
             } catch (e) { console.error("initVoice error", e); }
