@@ -340,7 +340,7 @@
                             </button>
 
                             <button onclick="openScoreBoard()" class="font-bold text-indigo-600 bg-indigo-50 px-2 md:px-3 py-1.5 rounded-lg border border-indigo-200 shadow-sm hover:bg-indigo-100 transition-colors text-sm flex items-center gap-1 shrink-0">
-                                📊 <span class="hidden md:inline">全員進度</span>
+                                📊 <span class="hidden md:inline">成績總覽</span>
                             </button>
 
                             <button onclick="openWeaknessCamp()" class="font-bold text-red-600 bg-red-50 px-2 md:px-3 py-1.5 rounded-lg border border-red-200 shadow-sm hover:bg-red-100 transition-colors text-sm flex items-center gap-1 shrink-0">
@@ -502,7 +502,7 @@
 
                     <!-- 智能複習營 Modal -->
                     <div id="ebbinghaus-camp-modal" class="fixed inset-0 bg-gray-900/80 backdrop-blur-sm hidden items-center justify-center z-[80] p-4 transition-opacity duration-200 opacity-0" onclick="if(event.target === this) closeGlobalModal('ebbinghaus-camp-modal')">
-                        <div class="bg-white rounded-[2rem] shadow-2xl w-full max-w-[95vw] xl:max-w-[80vw] overflow-hidden border-4 border-pink-400 transform scale-95 transition-transform duration-200 flex flex-col relative min-h-[85vh]">
+                        <div class="bg-white rounded-[2rem] shadow-2xl w-full max-w-[95vw] lg:max-w-5xl overflow-hidden border-4 border-pink-400 transform scale-95 transition-transform duration-200 flex flex-col relative min-h-[85vh]">
                             <div class="bg-gradient-to-r from-pink-500 to-fuchsia-500 p-4 flex justify-between items-center text-white shrink-0">
                                 <h2 class="text-xl font-bold flex items-center gap-2">🧠 艾賓浩斯智能複習營</h2>
                                 <button onclick="closeGlobalModal('ebbinghaus-camp-modal')" class="hover:bg-white/20 rounded-full w-8 h-8 flex items-center justify-center font-bold text-xl transition-colors">✕</button>
@@ -515,7 +515,7 @@
 
                     <!-- 智能複習 單字一覽 Modal -->
                     <div id="ebbinghaus-study-modal" class="fixed inset-0 bg-gray-900/90 backdrop-blur-sm hidden items-center justify-center z-[90] p-4 transition-opacity duration-200 opacity-0">
-                        <div class="bg-white rounded-[2rem] shadow-2xl w-full max-w-[95vw] xl:max-w-[70vw] overflow-hidden border-4 border-fuchsia-300 transform scale-95 transition-transform duration-200 flex flex-col h-[90vh]">
+                        <div class="bg-white rounded-[2rem] shadow-2xl w-full max-w-[95vw] lg:max-w-4xl overflow-hidden border-4 border-fuchsia-300 transform scale-95 transition-transform duration-200 flex flex-col h-[90vh]">
                             <div class="bg-gradient-to-r from-fuchsia-400 to-pink-500 p-4 flex justify-between items-center text-white shrink-0">
                                 <h2 class="text-xl font-bold flex items-center gap-2">🧠 複習關卡 <span id="ebbinghaus-study-badge" class="bg-white/30 px-2 py-0.5 rounded text-sm shadow-sm ml-2"></span></h2>
                                 <button onclick="closeGlobalModal('ebbinghaus-study-modal')" class="hover:bg-white/30 rounded-full w-8 h-8 flex items-center justify-center font-bold text-xl transition-colors">✕</button>
@@ -590,12 +590,12 @@
 
                     <!-- 錯題集中營 Modal -->
                     <div id="weakness-modal" class="fixed inset-0 bg-gray-900/80 backdrop-blur-sm hidden items-center justify-center z-[80] p-4 transition-opacity duration-200 opacity-0" onclick="if(event.target === this) closeGlobalModal('weakness-modal')">
-                        <div class="bg-white rounded-[2rem] shadow-2xl w-full max-w-[95vw] xl:max-w-[80vw] overflow-hidden border-4 border-red-300 transform scale-95 transition-transform duration-200 flex flex-col relative min-h-[90vh]">
+                        <div class="bg-white rounded-[2rem] shadow-2xl w-full max-w-[95vw] lg:max-w-6xl overflow-hidden border-4 border-red-300 transform scale-95 transition-transform duration-200 flex flex-col relative min-h-[90vh]">
                             <div class="bg-gradient-to-r from-red-500 to-rose-500 p-4 flex justify-between items-center text-white shrink-0">
                                 <div class="flex items-center gap-4">
                                     <h2 class="text-xl font-bold flex items-center gap-2">🔥 錯題集中營</h2>
                                     <button onclick="openScoreBoard()" class="bg-white/20 hover:bg-white/30 text-white border border-white/50 px-3 py-1.5 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center gap-1">
-                                        📊 全員進度排行
+                                        📊 測驗成績總覽
                                     </button>
                                 </div>
                                 <button onclick="closeGlobalModal('weakness-modal')" class="hover:bg-white/20 rounded-full w-8 h-8 flex items-center justify-center font-bold text-xl">✕</button>
@@ -608,9 +608,9 @@
 
                     <!-- 成績總覽表 Modal -->
                     <div id="score-board-modal" class="fixed inset-0 bg-gray-900/80 backdrop-blur-sm hidden items-center justify-center z-[110] p-4 transition-opacity duration-200 opacity-0" onclick="if(event.target === this) closeGlobalModal('score-board-modal')">
-                        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-[95vw] xl:max-w-[80vw] overflow-hidden border-4 border-indigo-300 transform scale-95 transition-transform duration-200 flex flex-col min-h-[50vh]">
+                        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-5xl overflow-hidden border-4 border-indigo-300 transform scale-95 transition-transform duration-200 flex flex-col min-h-[50vh]">
                             <div class="bg-gradient-to-r from-indigo-500 to-purple-600 p-4 flex justify-between items-center text-white shrink-0">
-                                <h2 class="text-xl font-bold flex items-center gap-2">📊 全員學習進度總排名</h2>
+                                <h2 class="text-xl font-bold flex items-center gap-2">📊 全員測驗成績總覽</h2>
                                 <button onclick="closeGlobalModal('score-board-modal')" class="hover:bg-white/20 rounded-full w-8 h-8 flex items-center justify-center font-bold text-xl">✕</button>
                             </div>
                             <div class="p-6 flex-1 overflow-x-auto custom-scrollbar bg-gray-50">
@@ -643,7 +643,7 @@
 
                     <!-- 進度追蹤 Modal -->
                     <div id="progress-modal" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm hidden items-center justify-center z-[70] p-4 transition-opacity duration-200 opacity-0" onclick="if(event.target === this) closeGlobalModal('progress-modal')">
-                        <div class="bg-white rounded-[2rem] shadow-2xl w-full max-w-[95vw] xl:max-w-[70vw] overflow-hidden border-4 border-rose-300 transform scale-95 transition-transform duration-200 flex flex-col relative min-h-[85vh]">
+                        <div class="bg-white rounded-[2rem] shadow-2xl w-full max-w-[95vw] lg:max-w-6xl overflow-hidden border-4 border-rose-300 transform scale-95 transition-transform duration-200 flex flex-col relative min-h-[85vh]">
                             <div class="bg-gradient-to-r from-rose-400 to-pink-500 p-4 flex justify-between items-center text-white shrink-0">
                                 <h2 class="text-xl font-bold flex items-center gap-2" id="progress-user-name">📈 單字闖關進度</h2>
                                 <button onclick="closeGlobalModal('progress-modal')" class="hover:bg-white/20 rounded-full w-8 h-8 flex items-center justify-center font-bold text-xl">✕</button>
@@ -1891,10 +1891,9 @@
                                         <div class="flex items-center gap-3 mt-2 mb-3">
                                             <button onclick="playAudio('${safeWord}', event)" class="w-8 h-8 bg-white text-red-500 rounded-full flex items-center justify-center hover:bg-red-100 transition-colors shadow-sm shrink-0 border border-red-200">
                                                 🔊
-                                    <button onclick="openScoreBoard()" class="bg-white/20 hover:bg-white/30 text-white border border-white/50 px-3 py-1.5 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center gap-1">
-                                        📊 全員進度排行
-                                    </button>
-                                </div>
+                                            </button>
+                                            <h4 class="font-black text-gray-800 text-xl md:text-2xl leading-tight">${w.word}</h4>
+                                        </div>
                                         
                                         <div class="text-red-700 font-bold mb-3">
                                             <span class="text-gray-500 mr-1">${w.pos}</span>${w.meaning}
@@ -1931,75 +1930,26 @@
                 const tbody = document.getElementById('score-board-body');
                 if(!header || !tbody) return;
                 
-                // 預先計算每個 Level 的總字數
-                const totalWordsByLevel = {};
-                LEVELS.forEach(lvl => {
-                    totalWordsByLevel[lvl] = Object.values(allVocab).filter(v => v.level === lvl).length;
-                });
-                
-                let headerHtml = `
-                    <th class="p-3 bg-indigo-100 sticky left-0 z-10 w-12 border-r border-indigo-200">名次</th>
-                    <th class="p-3 bg-indigo-100 sticky left-12 z-10 border-r border-indigo-200">學習者</th>
-                    <th class="p-3 bg-indigo-200 text-indigo-900 border-r border-indigo-300">總學習字數</th>
-                `;
+                let headerHtml = `<th class="p-3 bg-indigo-100 sticky left-0 z-10">學習者</th>`;
                 LEVELS.forEach(lvl => headerHtml += `<th class="p-3 whitespace-nowrap">${lvl}</th>`);
                 header.innerHTML = headerHtml;
 
-                // 計算每位使用者的總字數與各級進度
-                const userStats = globalUsers.map(u => {
-                    let totalLearned = 0;
-                    const levelProgress = {};
-                    
-                    LEVELS.forEach(lvl => {
-                        const progressDocId = `${u}_${lvl}`;
-                        const learned = allProgress[progressDocId]?.lastIndex || 0;
-                        levelProgress[lvl] = learned;
-                        totalLearned += learned;
-                    });
-                    
-                    return {
-                        id: u,
-                        dispName: usersProfile[u]?.nickname || u,
-                        totalLearned: totalLearned,
-                        levelProgress: levelProgress
-                    };
-                });
-                
-                // 依照總字數由高到低排序
-                userStats.sort((a, b) => b.totalLearned - a.totalLearned);
-
                 let bodyHtml = '';
-                userStats.forEach((stat, index) => {
-                    const rank = index + 1;
-                    let rankBadge = `<span class="text-gray-500 font-bold">${rank}</span>`;
-                    if(rank === 1) rankBadge = `<span class="text-2xl" title="第一名">🥇</span>`;
-                    else if(rank === 2) rankBadge = `<span class="text-2xl" title="第二名">🥈</span>`;
-                    else if(rank === 3) rankBadge = `<span class="text-2xl" title="第三名">🥉</span>`;
-
-                    const isMe = stat.id === username;
-                    const rowClass = isMe ? 'bg-indigo-50/50 hover:bg-indigo-100/50' : 'hover:bg-indigo-50';
-                    const stickyBg = isMe ? 'bg-indigo-50' : 'bg-white';
-
-                    bodyHtml += `<tr class="${rowClass} transition-colors">`;
-                    bodyHtml += `<td class="p-3 border-r border-gray-100 ${stickyBg} sticky left-0 z-10">${rankBadge}</td>`;
-                    bodyHtml += `<td class="p-3 font-black text-gray-800 border-r border-gray-100 ${stickyBg} sticky left-12 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
-                                    <div class="flex items-center gap-2 justify-center md:justify-start">
-                                        <div class="${getUserColor(stat.id)} w-6 h-6 rounded-full flex items-center justify-center text-[10px] shadow-sm shrink-0">${getAvatarChar(stat.id)}</div>
-                                        <span class="truncate max-w-[100px] md:max-w-none" title="${stat.dispName}">${stat.dispName}</span>
-                                        ${isMe ? '<span class="text-[10px] bg-indigo-500 text-white px-1.5 py-0.5 rounded shadow-sm ml-1 shrink-0">我</span>' : ''}
-                                    </div>
+                globalUsers.forEach(u => {
+                    const dispName = usersProfile[u]?.nickname || u;
+                    bodyHtml += `<tr class="hover:bg-indigo-50 transition-colors">`;
+                    bodyHtml += `<td class="p-3 font-black text-gray-800 bg-white sticky left-0 z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] flex items-center gap-2">
+                                    <div class="${getUserColor(u)} w-6 h-6 rounded-full flex items-center justify-center text-[10px] shadow-sm">${getAvatarChar(u)}</div>
+                                    ${dispName}
                                  </td>`;
                     
-                    bodyHtml += `<td class="p-3 font-black text-xl text-indigo-600 bg-indigo-50/30 border-r border-gray-100">${stat.totalLearned} <span class="text-xs text-indigo-400">字</span></td>`;
-                    
                     LEVELS.forEach(lvl => {
-                        const learned = stat.levelProgress[lvl];
-                        const total = totalWordsByLevel[lvl] || 0;
-                        if (learned > 0) {
-                            const isComplete = learned >= total && total > 0;
-                            const colorClass = isComplete ? 'text-green-600 font-black' : 'text-gray-600 font-bold';
-                            const icon = isComplete ? ' ✅' : '';
-                            bodyHtml += `<td class="p-3 ${colorClass}">${learned} / ${total} 字${icon}</td>`;
+                        const score = allProgress[`${u}_${lvl}`]?.bestScore;
+                        if (score !== undefined) {
+                            let colorClass = 'text-gray-600 font-bold';
+                            if (score >= 20) colorClass = 'text-rose-600 font-black';
+                            else if (score >= 16) colorClass = 'text-green-600 font-black';
+                            bodyHtml += `<td class="p-3 ${colorClass}">${score} / 20</td>`;
                         } else {
                             bodyHtml += `<td class="p-3 text-gray-300">-</td>`;
                         }
