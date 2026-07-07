@@ -101,6 +101,7 @@
             messagingSenderId: "76289812052",
             appId: "1:76289812052:web:898384a916f9f341f62fc1"
         };
+        // 專屬獨立資料庫名稱
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'english-vocabulary';
         
         const appDataRaw = document.getElementById('app-data').textContent;
@@ -200,6 +201,7 @@
 
         // 尋找最佳女性語音
         const initVoice = () => {
+            if (!('speechSynthesis' in window)) return;
             const voices = speechSynthesis.getVoices();
             femaleVoice = voices.find(v => v.lang.startsWith('en') && v.name.includes('Google US English')) ||
                           voices.find(v => v.lang.startsWith('en') && v.name.includes('Samantha')) ||
@@ -208,7 +210,7 @@
                           voices.find(v => v.lang.startsWith('en-US')) || 
                           voices.find(v => v.lang.startsWith('en'));
         };
-        if (speechSynthesis.onvoiceschanged !== undefined) {
+        if ('speechSynthesis' in window && speechSynthesis.onvoiceschanged !== undefined) {
             speechSynthesis.onvoiceschanged = initVoice;
         }
 
@@ -764,8 +766,12 @@
             const newChat = [...chatMessages, newMsg];
             if(newChat.length > 50) newChat.shift();
             
-            await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'System', 'Chat'), { messages: newChat });
-            input.value = '';
+            try {
+                await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'System', 'Chat'), { messages: newChat });
+                input.value = '';
+            } catch(e) {
+                console.error(e);
+            }
         };
 
         window.insertEmoji = (emoji) => {
@@ -1125,7 +1131,9 @@
             });
             html += '</div>';
             
-            document.getElementById('learning-content').innerHTML = html;
+            try {
+                document.getElementById('learning-content').innerHTML = html;
+            } catch(e) { console.error(e); }
             
             // 更新分頁按鈕狀態
             const totalPages = Math.ceil(currentLearningBatch.length / 10);
@@ -1162,7 +1170,7 @@
             
             if(currentPageIndex >= totalPages - 1) {
                 // 強制進入測驗，不先存進度
-                alert("即將進入隨機測驗！必須完成該單元全數 20 題的測驗，系統才會記錄進度喔！");
+                alert("進入隨機測驗！必須完成該單元全數 20 題的測驗，系統才會記錄進度喔！");
                 startQuiz('post_learning', modalState.level);
             } else {
                 currentPageIndex++;
@@ -1175,16 +1183,18 @@
             if(e) e.stopPropagation();
             if(!text) return;
             
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = 'en-US';
-            if (femaleVoice) {
-                utterance.voice = femaleVoice;
+            if ('speechSynthesis' in window) {
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'en-US';
+                if (femaleVoice) {
+                    utterance.voice = femaleVoice;
+                }
+                // 稍微調整語速和音調讓它更自然
+                utterance.rate = 0.9;
+                utterance.pitch = 1.1; 
+                
+                speechSynthesis.speak(utterance);
             }
-            // 稍微調整語速和音調讓它更自然
-            utterance.rate = 0.9;
-            utterance.pitch = 1.1; 
-            
-            speechSynthesis.speak(utterance);
         };
 
         window.toggleFavorite = async (wordId, e) => {
@@ -1304,7 +1314,9 @@
                 </div>
             `;
 
-            document.getElementById('quiz-question-container').innerHTML = questionHtml + optionsHtml + nextBtnHtml;
+            try {
+                document.getElementById('quiz-question-container').innerHTML = questionHtml + optionsHtml + nextBtnHtml;
+            } catch(e) { console.error(e); }
         };
 
         window.checkQuizAnswer = async (btn, selectedWord, correctWord) => {
@@ -1346,7 +1358,7 @@
             if (exp) exp.classList.remove('hidden');
             
             const senDisp = document.getElementById('quiz-sentence-display');
-            if (senDisp && currentObj.sentence) senDisp.classList.add('hidden'); // 隱藏挖空，直接看解析
+            if (senDisp && currentObj.sentence) senDisp.classList.add('hidden'); // 隱藏挖空
             
             document.getElementById('quiz-next-btn-container').classList.remove('hidden');
 
@@ -1518,7 +1530,9 @@
                     }
                 });
                 html += '</div>';
-                container.innerHTML = html;
+                try {
+                    container.innerHTML = html;
+                } catch(e) { console.error(e); }
             }
             
             closeGlobalModal('quiz-result-modal'); 
@@ -1528,6 +1542,7 @@
         window.openScoreBoard = () => {
             const header = document.getElementById('score-board-header');
             const tbody = document.getElementById('score-board-body');
+            if(!header || !tbody) return;
             
             let headerHtml = `<th class="p-3 bg-indigo-100 sticky left-0 z-10">學習者</th>`;
             LEVELS.forEach(lvl => headerHtml += `<th class="p-3 whitespace-nowrap">${lvl}</th>`);
@@ -1612,7 +1627,9 @@
                 } else {
                     usersProfile = {};
                 }
-                if(username) window.renderMainContent();
+                if(username) {
+                    try { window.renderMainContent(); } catch(e) { console.error(e); }
+                }
             }, errHandler);
 
             const datesRef = doc(db, 'artifacts', appId, 'public', 'data', 'System', 'Dates');
@@ -1627,14 +1644,18 @@
                     ];
                     setDoc(datesRef, { list: importantDates }).catch(errHandler);
                 }
-                if(username) window.renderSidebar();
+                if(username) {
+                    try { window.renderSidebar(); } catch(e) { console.error(e); }
+                }
             }, errHandler);
 
             const chatRef = doc(db, 'artifacts', appId, 'public', 'data', 'System', 'Chat');
             if(unsubChat) unsubChat();
             unsubChat = onSnapshot(chatRef, (snap) => {
                 if(snap.exists()) chatMessages = snap.data().messages || [];
-                if(username) window.renderChat();
+                if(username) {
+                    try { window.renderChat(); } catch(e) { console.error(e); }
+                }
             }, errHandler);
 
             // 題庫資料監聽
@@ -1643,7 +1664,9 @@
             unsubVocab = onSnapshot(vocabCol, (snap) => {
                 allVocab = {};
                 snap.forEach(docSnap => allVocab[docSnap.id] = docSnap.data());
-                if(username && document.getElementById('progress-modal') && !document.getElementById('progress-modal').classList.contains('hidden')) window.openProgressModal();
+                if(username && document.getElementById('progress-modal') && !document.getElementById('progress-modal').classList.contains('hidden')) {
+                    try { window.openProgressModal(); } catch(e) { console.error(e); }
+                }
             }, errHandler);
 
             // 學習進度監聽
@@ -1652,7 +1675,9 @@
             unsubProgress = onSnapshot(progressCol, (snap) => {
                 allProgress = {};
                 snap.forEach(docSnap => allProgress[docSnap.id] = docSnap.data());
-                if(username && document.getElementById('progress-modal') && !document.getElementById('progress-modal').classList.contains('hidden')) window.openProgressModal();
+                if(username && document.getElementById('progress-modal') && !document.getElementById('progress-modal').classList.contains('hidden')) {
+                    try { window.openProgressModal(); } catch(e) { console.error(e); }
+                }
             }, errHandler);
 
             // 活動紀錄監聽 (日曆顯示用)
@@ -1661,7 +1686,9 @@
             unsubActivity = onSnapshot(activityCol, (snap) => {
                 allActivities = {};
                 snap.forEach(docSnap => allActivities[docSnap.id] = docSnap.data());
-                if(username) window.renderMainContent();
+                if(username) {
+                    try { window.renderMainContent(); } catch(e) { console.error(e); }
+                }
             }, errHandler);
 
             // 最愛單字監聽
@@ -1671,15 +1698,17 @@
                 allFavorites = {};
                 snap.forEach(docSnap => allFavorites[docSnap.id] = docSnap.data());
                 if(username) {
-                    window.renderFavorites();
-                    const learningModal = document.getElementById('learning-modal');
-                    if(learningModal && !learningModal.classList.contains('hidden')) window.renderLearningPage();
-                    const waterfallModal = document.getElementById('waterfall-modal');
-                    if(waterfallModal && !waterfallModal.classList.contains('hidden')) {
-                         const titleText = document.getElementById('waterfall-title').innerText;
-                         const lvlMatch = titleText.match(/Level \d+/);
-                         if (lvlMatch) window.openWaterfall(lvlMatch[0]);
-                    }
+                    try {
+                        window.renderFavorites();
+                        const learningModal = document.getElementById('learning-modal');
+                        if(learningModal && !learningModal.classList.contains('hidden')) window.renderLearningPage();
+                        const waterfallModal = document.getElementById('waterfall-modal');
+                        if(waterfallModal && !waterfallModal.classList.contains('hidden')) {
+                             const titleText = document.getElementById('waterfall-title').innerText;
+                             const lvlMatch = titleText.match(/Level \d+/);
+                             if (lvlMatch) window.openWaterfall(lvlMatch[0]);
+                        }
+                    } catch(e) { console.error(e); }
                 }
             }, errHandler);
 
@@ -1689,15 +1718,21 @@
             unsubWeak = onSnapshot(weakCol, (snap) => {
                 allWeakness = {};
                 snap.forEach(docSnap => allWeakness[docSnap.id] = docSnap.data());
-                if(username && document.getElementById('weakness-modal') && !document.getElementById('weakness-modal').classList.contains('hidden')) window.openWeaknessCamp();
+                if(username && document.getElementById('weakness-modal') && !document.getElementById('weakness-modal').classList.contains('hidden')) {
+                    try { window.openWeaknessCamp(); } catch(e) { console.error(e); }
+                }
             }, errHandler);
         };
 
         const initApp = async () => {
-            window.renderApp();
+            try {
+                window.renderApp();
+            } catch (e) { console.error("renderApp error", e); }
             
             // 初始化發音語音
-            initVoice();
+            try {
+                initVoice();
+            } catch (e) { console.error("initVoice error", e); }
 
             const config = getStoredConfig();
             if (!config || !config.apiKey) {
@@ -1741,7 +1776,8 @@
             }
         };
 
-        initApp();
+        // Ensure initialization runs after DOM is fully parsed
+        setTimeout(initApp, 100);
 
     </script>
 </body>
