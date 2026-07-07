@@ -213,36 +213,12 @@
                 event.preventDefault();
             }
             if (!('speechSynthesis' in window)) return;
-            speechSynthesis.cancel(); 
+            speechSynthesis.cancel(); // 停止當前正在播放的語音
             const utterance = new SpeechSynthesisUtterance(text);
             utterance.lang = 'en-US';
             if (femaleVoice) utterance.voice = femaleVoice;
-            utterance.rate = 0.9; 
+            utterance.rate = 0.9; // 稍微放慢語速，聽得更清楚
             speechSynthesis.speak(utterance);
-        };
-
-        // 計算艾賓浩斯複習狀態
-        const getEbbinghausStatus = (reviewCount, lastDateStr) => {
-            if (!lastDateStr || reviewCount === 0) return { needReview: true, text: '💡 首次複習', color: 'text-rose-500 bg-rose-50 border-rose-200' };
-            
-            const lastDate = new Date(lastDateStr);
-            lastDate.setHours(0,0,0,0);
-            const now = new Date();
-            now.setHours(0,0,0,0);
-            const daysPassed = Math.floor((now - lastDate) / (1000 * 60 * 60 * 24));
-
-            let targetInterval = 1;
-            if (reviewCount === 1) targetInterval = 1; 
-            else if (reviewCount === 2) targetInterval = 2; 
-            else if (reviewCount === 3) targetInterval = 4; 
-            else if (reviewCount === 4) targetInterval = 7; 
-            else targetInterval = 15; 
-
-            if (daysPassed >= targetInterval) {
-                return { needReview: true, text: '🔥 建議複習', color: 'text-red-600 bg-red-50 border-red-300' };
-            } else {
-                return { needReview: false, text: '✔️ 記憶穩固', color: 'text-green-600 bg-green-50 border-green-300' };
-            }
         };
 
         // ==========================================
@@ -335,10 +311,6 @@
                         <div class="flex items-center gap-2 md:gap-3 pr-2 flex-wrap justify-end">
                             ${isAdmin ? `<button onclick="window.open('migration_tool.html', '_blank')" class="bg-gradient-to-r from-amber-400 to-orange-400 text-white font-bold px-3 py-1.5 rounded-lg shadow-sm hover:scale-105 transition-transform text-sm shrink-0 hidden lg:block">⚙️ 題庫管理</button>` : ''}
                             
-                            <button onclick="openEbbinghausCamp()" class="font-bold text-pink-700 bg-pink-100 px-2 md:px-3 py-1.5 rounded-lg border border-pink-300 shadow-sm hover:bg-pink-200 transition-colors text-sm flex items-center gap-1 shrink-0">
-                                🧠 <span class="hidden md:inline">智能複習</span>
-                            </button>
-
                             <button onclick="openScoreBoard()" class="font-bold text-indigo-600 bg-indigo-50 px-2 md:px-3 py-1.5 rounded-lg border border-indigo-200 shadow-sm hover:bg-indigo-100 transition-colors text-sm flex items-center gap-1 shrink-0">
                                 📊 <span class="hidden md:inline">成績總覽</span>
                             </button>
@@ -493,39 +465,10 @@
                             </div>
                             
                             <div id="level-actions-container" class="flex flex-col gap-2 mt-4 pt-4 border-t border-gray-100 hidden">
-                                <!-- JS 動態填入測驗按鈕 -->
+                                <!-- JS 動態填入複習/測驗按鈕 -->
                             </div>
 
                             <button onclick="closeGlobalModal('level-select-modal')" class="mt-4 w-full py-2.5 rounded-xl font-bold text-gray-500 bg-gray-50 border border-gray-200 hover:bg-gray-100">取消</button>
-                        </div>
-                    </div>
-
-                    <!-- 智能複習營 Modal -->
-                    <div id="ebbinghaus-camp-modal" class="fixed inset-0 bg-gray-900/80 backdrop-blur-sm hidden items-center justify-center z-[80] p-4 transition-opacity duration-200 opacity-0" onclick="if(event.target === this) closeGlobalModal('ebbinghaus-camp-modal')">
-                        <div class="bg-white rounded-[2rem] shadow-2xl w-full max-w-[95vw] lg:max-w-5xl overflow-hidden border-4 border-pink-400 transform scale-95 transition-transform duration-200 flex flex-col relative min-h-[85vh]">
-                            <div class="bg-gradient-to-r from-pink-500 to-fuchsia-500 p-4 flex justify-between items-center text-white shrink-0">
-                                <h2 class="text-xl font-bold flex items-center gap-2">🧠 艾賓浩斯智能複習營</h2>
-                                <button onclick="closeGlobalModal('ebbinghaus-camp-modal')" class="hover:bg-white/20 rounded-full w-8 h-8 flex items-center justify-center font-bold text-xl transition-colors">✕</button>
-                            </div>
-                            <div class="p-4 md:p-6 bg-pink-50/50 overflow-y-auto flex-1 custom-scrollbar" id="ebbinghaus-camp-content">
-                                <!-- JS 動態注入關卡 -->
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- 智能複習 單字一覽 Modal -->
-                    <div id="ebbinghaus-study-modal" class="fixed inset-0 bg-gray-900/90 backdrop-blur-sm hidden items-center justify-center z-[90] p-4 transition-opacity duration-200 opacity-0">
-                        <div class="bg-white rounded-[2rem] shadow-2xl w-full max-w-[95vw] lg:max-w-4xl overflow-hidden border-4 border-fuchsia-300 transform scale-95 transition-transform duration-200 flex flex-col h-[90vh]">
-                            <div class="bg-gradient-to-r from-fuchsia-400 to-pink-500 p-4 flex justify-between items-center text-white shrink-0">
-                                <h2 class="text-xl font-bold flex items-center gap-2">🧠 複習關卡 <span id="ebbinghaus-study-badge" class="bg-white/30 px-2 py-0.5 rounded text-sm shadow-sm ml-2"></span></h2>
-                                <button onclick="closeGlobalModal('ebbinghaus-study-modal')" class="hover:bg-white/30 rounded-full w-8 h-8 flex items-center justify-center font-bold text-xl transition-colors">✕</button>
-                            </div>
-                            <div class="p-4 md:p-6 overflow-y-auto flex-1 custom-scrollbar bg-fuchsia-50/50" id="ebbinghaus-study-content">
-                                <!-- 20 個單字列表 -->
-                            </div>
-                            <div class="p-4 bg-white border-t border-fuchsia-100 flex justify-center shrink-0">
-                                <button id="ebbinghaus-complete-btn" class="w-full md:w-auto px-10 py-3.5 rounded-xl font-black text-white bg-gradient-to-r from-fuchsia-500 to-pink-500 hover:from-fuchsia-600 hover:to-pink-600 shadow-md transition-all transform hover:scale-[1.02] text-lg">✅ 完成本次複習，記錄進度</button>
-                            </div>
                         </div>
                     </div>
 
@@ -878,33 +821,6 @@
                 if (!emojiPicker.contains(e.target) && e.target !== toggleBtn) emojiPicker.classList.add('hidden');
             }
         });
-
-        // 最愛單字切換實作
-        window.toggleFavorite = async (wordId, event) => {
-            if(event) { 
-                event.stopPropagation(); 
-                event.preventDefault(); 
-                // 立即更新 UI (樂觀更新)
-                const btn = event.currentTarget;
-                if(btn.innerText.includes('❤️')) btn.innerText = '🤍';
-                else btn.innerText = '❤️';
-            }
-            
-            const favId = `${username}_${wordId}`;
-            try {
-                if (allFavorites[favId]) {
-                    await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'VocabFavorites', favId));
-                } else {
-                    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'VocabFavorites', favId), {
-                        user: username,
-                        wordId: wordId,
-                        timestamp: new Date().toISOString()
-                    });
-                }
-            } catch(e) {
-                console.error("Favorite update failed", e);
-            }
-        };
 
         // ==========================================
         //  登入/註冊/個資 邏輯
@@ -1291,158 +1207,6 @@
         };
 
         // ==========================================
-        //  全新艾賓浩斯智能複習營邏輯
-        // ==========================================
-        window.openEbbinghausCamp = () => {
-            try {
-                const container = document.getElementById('ebbinghaus-camp-content');
-                let hasAnyProgress = false;
-                let html = '<div class="space-y-6">';
-                
-                LEVELS.forEach(lvl => {
-                    const progressDocId = `${username}_${lvl}`;
-                    const lastIndex = allProgress[progressDocId]?.lastIndex || 0;
-                    
-                    if (lastIndex > 0) {
-                        hasAnyProgress = true;
-                        html += `
-                            <div class="bg-white rounded-3xl p-5 md:p-8 shadow-sm border-2 border-pink-100">
-                                <h3 class="text-2xl font-black text-pink-700 mb-5 border-b-2 border-pink-100 pb-3 flex items-center gap-2">
-                                    📚 ${lvl} 
-                                    <span class="text-xs font-bold text-gray-500 bg-gray-100 px-3 py-1 rounded-full ml-2">已學 ${lastIndex} 字</span>
-                                </h3>
-                                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-                        `;
-                        
-                        const stagesCount = Math.ceil(lastIndex / 20);
-                        for (let s = 0; s < stagesCount; s++) {
-                            const startIndex = s * 20;
-                            const endIndex = Math.min(startIndex + 20, lastIndex); 
-                            
-                            const stagesData = allProgress[progressDocId]?.stages || {};
-                            const stageInfo = stagesData[startIndex] || { reviewCount: 0, lastReviewDate: null };
-                            
-                            const status = getEbbinghausStatus(stageInfo.reviewCount, stageInfo.lastReviewDate);
-                            
-                            html += `
-                                <div onclick="openEbbinghausStage('${lvl}', ${startIndex}, ${endIndex})" class="cursor-pointer border-2 ${status.needReview ? 'border-red-300 hover:border-red-400 bg-red-50/50' : 'border-fuchsia-200 hover:border-fuchsia-400 bg-white'} rounded-2xl p-5 flex flex-col gap-2 hover:shadow-lg transition-all group transform hover:-translate-y-1 relative overflow-hidden">
-                                    <div class="absolute -right-4 -top-4 text-5xl opacity-10 font-black italic">#${s+1}</div>
-                                    <div class="flex justify-between items-start z-10">
-                                        <h4 class="font-black text-xl text-gray-800">關卡 ${s+1}</h4>
-                                        <span class="text-[10px] md:text-xs font-bold px-2 py-1 rounded-md border ${status.color} shadow-sm">${status.text}</span>
-                                    </div>
-                                    <div class="text-xs font-bold text-gray-500 z-10 mb-2">單字範圍: ${startIndex + 1} - ${endIndex} 字</div>
-                                    
-                                    <div class="flex justify-between items-end mt-auto pt-3 text-sm border-t border-gray-200/50 z-10">
-                                        <div class="text-gray-500 font-bold">
-                                            <div class="text-[10px] mb-0.5">🗓️ 上次複習</div>
-                                            <div class="text-gray-700">${stageInfo.lastReviewDate || '尚無紀錄'}</div>
-                                        </div>
-                                        <div class="text-fuchsia-600 font-black bg-fuchsia-100 px-3 py-1.5 rounded-lg border border-fuchsia-200">
-                                            🔄 ${stageInfo.reviewCount} 次
-                                        </div>
-                                    </div>
-                                </div>
-                            `;
-                        }
-                        html += `</div></div>`;
-                    }
-                });
-                html += '</div>';
-                
-                if (!hasAnyProgress) {
-                    html = `
-                        <div class="flex flex-col items-center justify-center py-20 text-gray-500">
-                            <div class="text-7xl mb-6 drop-shadow-md">🌱</div>
-                            <h3 class="text-2xl md:text-3xl font-black text-pink-500 drop-shadow-sm mb-3">尚未有學習紀錄</h3>
-                            <p class="text-sm md:text-md font-bold text-gray-400">請先在日曆上點擊日期進入「單字特訓」進行學習，<br>有了紀錄後就可以在這裡進行艾賓浩斯智能複習喔！🚀</p>
-                        </div>
-                    `;
-                }
-                
-                container.innerHTML = html;
-                openGlobalModal('ebbinghaus-camp-modal');
-            } catch(e) { console.error("openEbbinghausCamp error", e); }
-        };
-
-        window.openEbbinghausStage = (level, startIndex, endIndex) => {
-            try {
-                document.getElementById('ebbinghaus-study-badge').innerText = `${level} (第 ${startIndex + 1} ~ ${endIndex} 字)`;
-                
-                const levelWords = Object.values(allVocab).filter(v => v.level === level).sort((a,b) => a.index - b.index);
-                const stageWords = levelWords.slice(startIndex, endIndex);
-                
-                let html = '<div class="space-y-4 w-full">';
-                stageWords.forEach(w => {
-                    const favId = `${username}_${w.id}`;
-                    const isFav = !!allFavorites[favId];
-                    const safeWord = escapeQuotes(w.word);
-                    const safeSentence = escapeQuotes(w.sentence);
-                    
-                    html += `
-                        <div class="bg-white p-5 rounded-2xl border-2 border-fuchsia-100 shadow-sm flex items-start gap-3 md:gap-4 relative hover:shadow-md transition-shadow group">
-                            <button onclick="toggleFavorite('${w.id}', event)" class="text-2xl md:text-3xl hover:scale-125 transition-transform shrink-0 pt-0.5" title="收藏">
-                                ${isFav ? '❤️' : '🤍'}
-                            </button>
-                            <div class="flex-1 min-w-0">
-                                <div class="flex items-center gap-2 mb-1.5 flex-wrap">
-                                    <button onclick="playAudio('${safeWord}', event)" class="w-8 h-8 md:w-10 md:h-10 bg-fuchsia-50 text-fuchsia-600 rounded-full flex items-center justify-center hover:bg-fuchsia-100 border border-fuchsia-200 shrink-0 text-sm shadow-sm">🔊</button>
-                                    <h4 class="font-black text-xl md:text-2xl text-gray-800 break-words">${w.word}</h4>
-                                    <span class="text-[10px] md:text-xs font-bold text-gray-400 bg-gray-50 px-2 py-0.5 rounded border border-gray-200 ml-1">#${w.index}</span>
-                                </div>
-                                <div class="text-sm md:text-base font-bold text-fuchsia-600 mb-2 pl-1"><span class="text-gray-400 mr-1.5">${w.pos}</span>${w.meaning}</div>
-                                ${w.sentence ? `
-                                    <div class="bg-fuchsia-50/50 p-3 rounded-xl text-sm border border-fuchsia-100 flex items-start gap-2.5">
-                                        <button onclick="playAudio('${safeSentence}', event)" class="w-6 h-6 md:w-7 md:h-7 bg-white text-fuchsia-400 rounded-full flex items-center justify-center hover:bg-fuchsia-100 transition-colors shadow-sm shrink-0 border border-fuchsia-200 text-[10px] mt-0.5">🔊</button>
-                                        <div class="flex flex-col gap-1">
-                                            <div class="text-gray-700 font-medium leading-snug">${w.sentence}</div>
-                                            <div class="text-gray-400 text-xs">${w.translation}</div>
-                                        </div>
-                                    </div>
-                                ` : ''}
-                            </div>
-                        </div>
-                    `;
-                });
-                html += '</div>';
-                
-                document.getElementById('ebbinghaus-study-content').innerHTML = html;
-                document.getElementById('ebbinghaus-study-content').scrollTop = 0;
-                
-                const btn = document.getElementById('ebbinghaus-complete-btn');
-                btn.onclick = () => completeEbbinghausStage(level, startIndex);
-                
-                openGlobalModal('ebbinghaus-study-modal');
-            } catch(e) { console.error("openEbbinghausStage error", e); }
-        };
-
-        window.completeEbbinghausStage = async (level, startIndex) => {
-            const progressDocId = `${username}_${level}`;
-            const currentData = allProgress[progressDocId] || {};
-            const stages = currentData.stages || {};
-            const stageData = stages[startIndex] || { reviewCount: 0 };
-            
-            stages[startIndex] = {
-                reviewCount: stageData.reviewCount + 1,
-                lastReviewDate: formatDate(new Date())
-            };
-
-            try {
-                await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'VocabProgress', progressDocId), {
-                    stages: stages,
-                    updatedAt: new Date().toISOString()
-                }, { merge: true });
-                
-                alert(`🎉 恭喜完成複習！本關卡已複習 ${stageData.reviewCount + 1} 次。`);
-                closeGlobalModal('ebbinghaus-study-modal');
-                openEbbinghausCamp(); // 重新整理營地視圖
-            } catch (e) {
-                console.error(e);
-                alert("儲存進度失敗！");
-            }
-        };
-
-        // ==========================================
         //  全新學習流程：選擇 Level 與 學習列表
         // ==========================================
         window.openLevelModal = (dateStr) => {
@@ -1450,9 +1214,11 @@
                 document.getElementById('level-modal-date').innerText = `選擇日期: ${dateStr}`;
                 modalState.date = dateStr;
                 
+                // 繪製等級按鈕
                 const levelContainer = document.getElementById('level-buttons-container');
                 levelContainer.innerHTML = LEVELS.map(lvl => `<button onclick="startLearning('${lvl}')" class="py-4 rounded-xl border-2 border-pink-200 text-pink-600 font-black text-lg hover:bg-pink-500 hover:text-white transition-all bg-white shadow-sm hover:scale-[1.02]">${lvl}</button>`).join('');
                 
+                // 檢查是否有任一等級有學習進度，如果有，顯示複習與測驗按鈕
                 let hasAnyProgress = false;
                 let currentSelectedLevel = modalState.level || LEVELS[0]; 
 
@@ -1465,13 +1231,16 @@
                 if (hasAnyProgress) {
                     actionContainer.classList.remove('hidden');
                     actionContainer.innerHTML = `
-                        <p class="text-xs text-center font-bold text-gray-400 mb-1">您已有學習紀錄，可進行隨堂測驗 👇</p>
-                        <div class="flex gap-2 w-full">
+                        <p class="text-xs text-center font-bold text-gray-400 mb-1">您已有學習紀錄，可進行隨堂測驗或複習 👇</p>
+                        <div class="flex gap-2">
                             <select id="action-level-select" class="w-1/3 px-2 py-2 rounded-lg border border-gray-300 font-bold text-pink-600 focus:outline-none">
                                 ${LEVELS.map(lvl => `<option value="${lvl}" ${lvl === currentSelectedLevel ? 'selected' : ''}>${lvl}</option>`).join('')}
                             </select>
-                            <button onclick="startQuiz('level', document.getElementById('action-level-select').value)" class="w-full py-2.5 rounded-lg font-black text-white bg-rose-500 hover:bg-rose-600 shadow-sm transition-all text-sm md:text-base">
-                                📝 模擬隨機測驗
+                            <button onclick="startQuiz('level', document.getElementById('action-level-select').value)" class="flex-1 py-2 rounded-lg font-black text-white bg-rose-500 hover:bg-rose-600 shadow-sm transition-all text-sm md:text-base">
+                                📝 模擬測驗
+                            </button>
+                            <button onclick="startEbbinghausReview(document.getElementById('action-level-select').value)" class="flex-1 py-2 rounded-lg font-black text-pink-700 bg-pink-100 hover:bg-pink-200 border border-pink-300 shadow-sm transition-all text-sm md:text-base">
+                                🧠 智能複習
                             </button>
                         </div>
                     `;
@@ -1491,6 +1260,7 @@
                 
                 const levelWords = Object.values(allVocab).filter(v => v.level === level).sort((a,b) => a.index - b.index);
                 
+                // 每次抽 20 個單字
                 currentLearningBatch = levelWords.slice(currentIndex, currentIndex + 20);
                 
                 if(currentLearningBatch.length === 0) {
@@ -1508,6 +1278,53 @@
                 renderLearningPage();
                 openGlobalModal('learning-modal');
             } catch(e) { console.error("startLearning error", e); }
+        };
+
+        // 艾賓浩斯智能複習
+        window.startEbbinghausReview = (level) => {
+            try {
+                const progressDocId = `${username}_${level}`;
+                const learnedCount = allProgress[progressDocId]?.lastIndex || 0;
+                const levelWords = Object.values(allVocab).filter(v => v.level === level).sort((a,b) => a.index - b.index);
+                const learnedWords = levelWords.slice(0, learnedCount);
+
+                if(learnedWords.length === 0) {
+                    alert(`您在 ${level} 尚無學習紀錄，請先進行學習！`);
+                    return;
+                }
+
+                let reviewBatch = [];
+                // 邏輯：抽取 40% 最新, 30% 最久, 30% 中間 (總數 20)
+                const targetCount = 20;
+                if (learnedWords.length <= targetCount) {
+                    reviewBatch = [...learnedWords];
+                } else {
+                    const numNew = Math.floor(targetCount * 0.4); // 8
+                    const numOld = Math.floor(targetCount * 0.3); // 6
+                    const numMid = targetCount - numNew - numOld; // 6
+
+                    const newest = learnedWords.slice(-numNew);
+                    const oldest = learnedWords.slice(0, numOld);
+                    const middlePool = learnedWords.slice(numOld, learnedWords.length - numNew);
+                    
+                    // 隨機抽中間
+                    const middleSelected = middlePool.sort(() => 0.5 - Math.random()).slice(0, numMid);
+                    
+                    reviewBatch = [...newest, ...oldest, ...middleSelected].sort((a,b) => a.index - b.index);
+                }
+
+                currentLearningBatch = reviewBatch;
+                currentPageIndex = 0;
+                isReviewMode = true; 
+                modalState.level = level;
+                
+                document.getElementById('learning-modal-title-badge').innerText = `🧠 ${level} 智能複習 (${reviewBatch.length} 字)`;
+                
+                closeGlobalModal('level-select-modal');
+                closeGlobalModal('complete-modal');
+                renderLearningPage();
+                openGlobalModal('learning-modal');
+            } catch(e) { console.error("startEbbinghausReview error", e); }
         };
 
         window.renderLearningPage = () => {
@@ -1562,6 +1379,7 @@
                 
                 document.getElementById('learning-content').innerHTML = html;
                 
+                // 更新分頁按鈕狀態
                 const totalPages = Math.ceil(currentLearningBatch.length / 10);
                 document.getElementById('learning-page-indicator').innerText = `頁次 ${currentPageIndex + 1} / ${totalPages}`;
                 
@@ -1596,6 +1414,7 @@
             const totalPages = Math.ceil(currentLearningBatch.length / 10);
             
             if(currentPageIndex >= totalPages - 1) {
+                // 強制進入測驗，不先存進度
                 alert("進入隨機測驗！必須完成該單元全數 20 題的測驗，系統才會記錄進度喔！");
                 startQuiz('post_learning', modalState.level);
             } else {
@@ -1611,8 +1430,10 @@
             try {
                 let pool = [];
                 if (mode === 'post_learning') {
+                    // 剛學完的 20 個字
                     pool = [...currentLearningBatch];
                 } else if (mode === 'level') {
+                    // 從該 Level 已學過的挑選 20 題
                     const progressDocId = `${username}_${level}`;
                     const learnedCount = allProgress[progressDocId]?.lastIndex || 0;
                     const levelWords = Object.values(allVocab).filter(v => v.level === level).sort((a,b) => a.index - b.index);
@@ -1621,19 +1442,21 @@
                         alert("已學習的單字數量不足，無法進行測驗！（至少需要 4 個單字）");
                         return;
                     }
+                    // 隨機抽最多 20 題
                     pool = pool.sort(() => 0.5 - Math.random()).slice(0, 20);
                 }
 
                 quizState = {
                     level: level,
                     mode: mode,
-                    questions: pool.sort(() => 0.5 - Math.random()), 
+                    questions: pool.sort(() => 0.5 - Math.random()), // 打亂出題順序
                     currentIndex: 0,
                     correct: 0,
                     wrongWords: []
                 };
 
                 closeGlobalModal('learning-modal');
+                closeGlobalModal('complete-modal');
                 closeGlobalModal('level-select-modal');
                 
                 renderQuizQuestion();
@@ -1646,6 +1469,7 @@
                 const total = quizState.questions.length;
                 const current = quizState.currentIndex;
                 
+                // Update Progress bar
                 const pct = (current / total) * 100;
                 document.getElementById('quiz-progress-bar').style.width = `${pct}%`;
                 document.getElementById('quiz-progress-badge').innerText = `第 ${current + 1} / ${total} 題`;
@@ -1654,6 +1478,7 @@
                 const correctWordStr = wordObj.word;
                 const safeCorrectWord = escapeQuotes(correctWordStr);
 
+                // Generate 3 wrong options from ALL vocab
                 let allOthers = Object.values(allVocab).filter(v => v.word !== correctWordStr);
                 allOthers = allOthers.sort(() => 0.5 - Math.random()).slice(0, 3);
                 
@@ -1661,6 +1486,7 @@
 
                 let questionHtml = '';
                 if (wordObj.sentence) {
+                    // 挖空改為連續底線 (實線效果)
                     const regex = new RegExp(`\\b${correctWordStr}\\b`, 'gi');
                     const blankedSentence = wordObj.sentence.replace(regex, '________');
                     
@@ -1707,6 +1533,7 @@
 
         window.checkQuizAnswer = async (btn, selectedWord, correctWord) => {
             try {
+                // Disable all buttons
                 const btns = document.querySelectorAll('.quiz-option-btn');
                 btns.forEach(b => {
                     b.disabled = true;
@@ -1739,14 +1566,16 @@
                     }
                 }
 
+                // 顯示解析與下一題按鈕
                 const exp = document.getElementById('quiz-explanation');
                 if (exp) exp.classList.remove('hidden');
                 
                 const senDisp = document.getElementById('quiz-sentence-display');
-                if (senDisp && currentObj.sentence) senDisp.classList.add('hidden');
+                if (senDisp && currentObj.sentence) senDisp.classList.add('hidden'); // 隱藏挖空，直接看解析
                 
                 document.getElementById('quiz-next-btn-container').classList.remove('hidden');
 
+                // 朗讀完整句子或單字
                 if (currentObj.sentence) {
                     playAudio(currentObj.sentence, null);
                 } else {
@@ -1769,6 +1598,7 @@
             const correct = quizState.correct;
             const score = correct; 
 
+            // 如果是剛學習完的測驗 (post_learning)，此時才寫入進度！
             if (quizState.mode === 'post_learning') {
                 const progressDocId = `${username}_${quizState.level}`;
                 const currentIndex = allProgress[progressDocId]?.lastIndex || 0;
@@ -1797,6 +1627,7 @@
                 } catch(e) { console.error(e); }
             }
 
+            // 儲存錯題 (永遠不刪除，只需新增)
             if (quizState.wrongWords.length > 0) {
                 try {
                     for(let w of quizState.wrongWords) {
@@ -1811,6 +1642,7 @@
                 } catch(e) { console.error("Error saving weaknesses", e); }
             }
 
+            // 計算評價與更新最佳成績
             let grade = 'C 級';
             let icon = '🎯';
             let msg = '再接再厲！錯題已經幫您整理到集中營囉。';
@@ -1823,6 +1655,7 @@
                 grade = 'B 級'; icon = '🥈'; msg = '表現不錯！請去錯題集中營複習一下喔。';
             }
 
+            // If it's a Level Quiz (not just recent batch), update the best score
             if (quizState.mode === 'level' || quizState.mode === 'post_learning') {
                 const progressDocId = `${username}_${quizState.level}`;
                 const currentBest = allProgress[progressDocId]?.bestScore || 0;
@@ -1865,6 +1698,7 @@
                         </div>
                     `;
                 } else {
+                    // 依照 Level 分類
                     const weakByLevel = {};
                     LEVELS.forEach(l => weakByLevel[l] = []);
                     myWeaknesses.forEach(w => {
