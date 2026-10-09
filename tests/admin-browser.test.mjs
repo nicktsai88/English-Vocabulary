@@ -16,8 +16,10 @@ await page.route('**/js/firebase.js', (route) =>
   route.fulfill({ contentType: 'text/javascript', path: 'tests/fixtures/mock-firebase.js' }),
 );
 await page.goto('http://127.0.0.1:4173/english-vocabulary/migration_tool.html');
-await page.getByRole('button', { name: '使用 Google 登入' }).click();
+assert.equal(await page.getByRole('button', { name: /Google|登入|登出/ }).count(), 0);
 await page.getByRole('heading', { name: '📥 批次匯入' }).waitFor();
+assert.equal(await page.locator('input[type=password]').count(), 0);
+assert.equal(await page.evaluate(() => globalThis.__familyConnectionCalls), 1);
 const sample = await fs.readFile('examples/demo.json', 'utf8');
 await page.getByRole('textbox', { name: 'JSON 匯入', exact: true }).fill(sample);
 await page.getByRole('button', { name: '驗證 JSON', exact: true }).click();
@@ -46,13 +48,11 @@ const workbook = await page.evaluate(() => {
     );
   return Array.from(new Uint8Array(XLSX.write(wb, { type: 'array', bookType: 'xlsx' })));
 });
-await page
-  .locator('input[type=file]')
-  .setInputFiles({
-    name: 'six-sheets.xlsx',
-    mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    buffer: Buffer.from(workbook),
-  });
+await page.locator('input[type=file]').setInputFiles({
+  name: 'six-sheets.xlsx',
+  mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  buffer: Buffer.from(workbook),
+});
 await page.getByRole('button', { name: '驗證所有已選工作表' }).click();
 await page.getByText('L1: 1 · L2: 1 · L3: 1 · L4: 1 · L5: 1 · L6: 1', { exact: true }).waitFor();
 await page

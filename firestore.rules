@@ -3,7 +3,8 @@ service cloud.firestore {
   match /databases/{database}/documents {
     function english(ns) { return ns == 'english-vocabulary-v1'; }
     function signed() { return request.auth != null; }
-    function admin(ns) { return english(ns) && signed() && 'admin' in request.auth.token && request.auth.token.admin == true; }
+    // Family mode: any automatically authenticated visitor can manage this namespace.
+    function familyEditor(ns) { return english(ns) && signed(); }
     function owner(ns, uid) { return english(ns) && signed() && request.auth.uid == uid; }
     function date(s) { return s is string && s.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$'); }
     function wordId(s) { return s is string && s.matches('^level[1-6]-[0-9]+$'); }
@@ -27,25 +28,25 @@ service cloud.firestore {
     }
     match /apps/{ns}/words/{id} {
       allow read: if english(ns) && signed();
-      allow create: if admin(ns) && validWord(id);
-      allow update: if admin(ns) && validWord(id)
+      allow create: if familyEditor(ns) && validWord(id);
+      allow update: if familyEditor(ns) && validWord(id)
         && request.resource.data.level == resource.data.level && request.resource.data.sequence == resource.data.sequence;
       allow delete: if false;
     }
     match /apps/{ns}/meta/{id} {
       allow read: if english(ns) && signed();
-      allow create, update: if admin(ns) && id in ['current','draft'];
+      allow create, update: if familyEditor(ns) && id in ['current','draft'];
       allow delete: if false;
     }
     match /apps/{ns}/curricula/{version} {
       allow read: if english(ns) && signed();
-      allow create: if admin(ns) && request.resource.data.ready == false;
-      allow update: if admin(ns) && resource.data.ready == false
+      allow create: if familyEditor(ns) && request.resource.data.ready == false;
+      allow update: if familyEditor(ns) && resource.data.ready == false
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['ready']);
       allow delete: if false;
       match /days/{day} {
         allow read: if english(ns) && signed();
-        allow create: if admin(ns)
+        allow create: if familyEditor(ns)
           && get(/databases/$(database)/documents/apps/$(ns)/curricula/$(version)).data.ready == false
           && request.resource.data.words is list && request.resource.data.words.size() <= 15
           && request.resource.data.index is int;

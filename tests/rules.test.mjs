@@ -37,12 +37,16 @@ test('owner account allowed; cross-owner and unauthenticated access rejected', a
     setDoc(doc(b, ns, 'accounts', 'alice'), { names: {}, updatedAt: serverTimestamp() }),
   );
 });
-test('only admin can write words and nobody can delete words', async () => {
-  const a = env.authenticatedContext('admin', { admin: true }).firestore(),
+test('family visitors can edit words without admin claims; unauthenticated writes and deletion denied', async () => {
+  const a = env
+      .authenticatedContext('family-editor', { firebase: { sign_in_provider: 'anonymous' } })
+      .firestore(),
     learner = env.authenticatedContext('alice').firestore();
   const w = JSON.parse(fs.readFileSync(new URL('../examples/demo.json', import.meta.url)))[0];
   await assertSucceeds(setDoc(doc(a, ns, 'words', w.id), w));
-  await assertFails(updateDoc(doc(learner, ns, 'words', w.id), { meaningZh: 'changed' }));
+  await assertSucceeds(updateDoc(doc(learner, ns, 'words', w.id), { meaningZh: 'changed' }));
+  const guest = env.unauthenticatedContext().firestore();
+  await assertFails(updateDoc(doc(guest, ns, 'words', w.id), { meaningZh: 'unauthenticated' }));
   await assertFails(deleteDoc(doc(a, ns, 'words', w.id)));
   await assertFails(setDoc(doc(a, 'apps/Chinese-Learning-1/words/test'), w));
 });
@@ -72,16 +76,20 @@ test('profile isolation and malformed progress denied', async () => {
     }),
   );
 });
-test('published snapshots cannot be overwritten, even by admin', async () => {
-  const a = env.authenticatedContext('admin', { admin: true }).firestore();
+test('published snapshots cannot be overwritten, even by family editors', async () => {
+  const a = env
+    .authenticatedContext('family-editor', { firebase: { sign_in_provider: 'anonymous' } })
+    .firestore();
   await assertSucceeds(setDoc(doc(a, ns + '/curricula/v1'), { ready: false, days: 1 }));
   await assertSucceeds(setDoc(doc(a, ns + '/curricula/v1/days/0'), { words: [], index: 0 }));
   await assertSucceeds(updateDoc(doc(a, ns + '/curricula/v1'), { ready: true }));
   await assertFails(updateDoc(doc(a, ns + '/curricula/v1/days/0'), { words: [] }));
   await assertFails(setDoc(doc(a, ns + '/curricula/v1/days/1'), { words: [], index: 1 }));
 });
-test('100-word admin transaction remains within security access-call limits', async () => {
-  const a = env.authenticatedContext('admin', { admin: true }).firestore();
+test('100-word family transaction remains within security access-call limits', async () => {
+  const a = env
+    .authenticatedContext('family-editor', { firebase: { sign_in_provider: 'anonymous' } })
+    .firestore();
   const sample = JSON.parse(fs.readFileSync(new URL('../examples/demo.json', import.meta.url)))[0];
   await assertSucceeds(
     F.runTransaction(a, async (tx) => {
@@ -93,7 +101,9 @@ test('100-word admin transaction remains within security access-call limits', as
   );
 });
 test('real Store plan and concurrent answer transactions obey rules and are idempotent', async () => {
-  const admin = env.authenticatedContext('admin', { admin: true }).firestore(),
+  const admin = env
+      .authenticatedContext('family-editor', { firebase: { sign_in_provider: 'anonymous' } })
+      .firestore(),
     db = env.authenticatedContext('integration').firestore();
   const sample = JSON.parse(fs.readFileSync(new URL('../examples/demo.json', import.meta.url)))[0];
   await setDoc(doc(admin, ns + '/curricula/integration'), { ready: false, days: 1 });

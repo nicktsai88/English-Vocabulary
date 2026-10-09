@@ -37,23 +37,27 @@ async function refresh() {
   status(`已連線 · 題庫 ${words.length} 筆`);
   updateDanger();
 }
-$('#login').addEventListener(
-  'click',
-  attempt(async () => {
-    status('正在驗證…');
-    ctx = ctx || (await connect(true));
-    if (!ctx.auth.currentUser)
-      await ctx.U.signInWithPopup(ctx.auth, new ctx.U.GoogleAuthProvider());
-    const token = await ctx.auth.currentUser.getIdTokenResult(true);
-    if (token.claims.admin !== true) {
-      status('權限不足');
-      await ctx.U.signOut(ctx.auth);
-      throw Error('此 Google 帳號沒有 admin claim，請依 README 在可信任環境授權');
-    }
+async function startManagement() {
+  status('正在連接家庭題庫…');
+  try {
+    ctx = ctx || (await connect());
     await refresh();
     render();
-  }),
-);
+  } catch (error) {
+    status('連線失敗');
+    $('#admin').replaceChildren(
+      el(
+        'section',
+        { class: 'panel' },
+        el('h2', {}, '暫時無法連接題庫'),
+        el('p', {}, '請確認網路、Firebase 匿名登入及家庭版規則已啟用。'),
+        el('p', { class: 'mini-note' }, error.message),
+        button('重新連線', startManagement, 'primary'),
+        el('p', {}, el('a', { href: './index.html' }, '← 回到學習樂園')),
+      ),
+    );
+  }
+}
 function textInput(name, required = true) {
   return el('input', { name, required, maxlength: 2000 });
 }
@@ -705,13 +709,9 @@ function render() {
           }),
         ),
         button('發布固定題庫版本', attempt(publish), 'primary'),
-        button(
-          '登出管理員',
-          attempt(async () => {
-            await ctx.U.signOut(ctx.auth);
-            location.reload();
-          }),
-        ),
+        button('回到學習樂園', () => {
+          location.href = './index.html';
+        }),
       ),
     ),
     el('div', { class: 'admin-grid' }, singleForm(), importPanel()),
@@ -752,3 +752,5 @@ function render() {
   );
   drawLibrary();
 }
+
+await startManagement();

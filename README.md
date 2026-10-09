@@ -22,7 +22,7 @@ node tools/serve.mjs
 
 專案設定已置於 `js/config.js`，使用 `chinese-learning-47f4d`。Web API key 是用戶端識別資訊，資料存取仍靠 Authentication 與 Security Rules。
 
-1. Authentication → Sign-in method：啟用 **Anonymous** 與 **Google**。
+1. Authentication → Sign-in method：只需啟用 **Anonymous（匿名登入）**；使用者不需輸入帳號或密碼。
 2. Authentication → Settings → Authorized domains：加入本機 `localhost`／測試需要的網域，以及 GitHub Pages 的 `你的帳號.github.io`。只填網域，不含儲存庫路徑。
 3. 確認已建立 Cloud Firestore，選用合適區域與正式模式。
 4. **先備份現有 Firestore 規則及索引。** 專案中 `firestore.rules` 是英文系統的完整隔離測試規則；直接覆蓋共用 Firebase 的規則會使未列出的舊應用失去存取權。正式環境應將英文 match 區塊及相關 functions 合併到既有規則，保留原應用的明確規則。
@@ -37,15 +37,13 @@ firebase deploy --config firebase.production.json --only firestore --project chi
 
 索引涵蓋題庫的 `level + sequence` 查詢；學習事件依 `createdAt` 以單欄索引分頁讀取。大型快照與原始來源已設定索引排除。此版本沒有 Storage 音檔與付費 AI／語音服務。
 
-## 開通管理員
+## 家庭管理模式（不需要登入或密碼）
 
-1. 先開啟管理頁並用指定 Google 帳號登入一次。尚未授權時會顯示權限不足並登出；帳號 UID 可從 Firebase Console → Authentication 取得。
-2. 在可信任的電腦／伺服器建立獨立管理工具目錄，安裝 `firebase-admin@13.2.0`，將 `tools/grant-admin.mjs` 放到該目錄。
-3. 以 Application Default Credentials 或 `GOOGLE_APPLICATION_CREDENTIALS` 指向**儲存庫之外**的服務帳號金鑰；不可上傳 GitHub、不可放入網頁。
-4. 執行 `node grant-admin.mjs GOOGLE_USER_UID`。腳本保留既有 claims，加入 `admin: true`。
-5. 重新登入管理頁。Firebase Auth 使用獨立命名 app 與 session persistence，不取代學習頁的匿名帳號。
+直接開啟 `migration_tool.html` 即可新增、編輯、匯入與發布題庫，沒有 Google 登入、管理員開通、admin claim 或密碼設定。學習頁與管理頁共用背景自動建立的 Firebase 匿名身分，返回學習頁不會登出或遺失紀錄。
 
-管理員能新增／編輯／停用題庫、發布不可變課程；一般學習者不能直接以 SDK 改題庫。永久刪除在 UI 與規則層都禁止，因此不會破壞歷史引用。
+此版本依家庭共用需求，允許所有背景匿名使用者修改英文題庫；**父親與小孩不區分管理權限，取得網址的其他人也可能修改題庫**。網站本身沒有驗證「只限家人」的機制。個別學習紀錄仍按匿名 UID 隔離；其他應用 namespace 不新增授權，永久刪除及已發布快照修改仍禁止。
+
+若先前已部署原版規則，必須將新版英文規則合併部署後，免登入管理頁才能寫入。程式已更新，但本交付不會自動更改正式 Firebase 權限。
 
 ## 匯入真正題庫與開始學習
 
@@ -131,7 +129,7 @@ vendor/firebase-11.6.1/* / xlsx-0.20.3.full.min.js
 firestore.rules / firestore.indexes.json
 firebase.json / firebase.production.example.json
 examples/demo.json / six-words.csv / 欄位說明.md
-tools/serve.mjs / grant-admin.mjs
+tools/serve.mjs
 tests/*
 .github/workflows/pages.yml
 ```

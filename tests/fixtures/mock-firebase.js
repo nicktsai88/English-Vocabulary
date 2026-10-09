@@ -7,9 +7,17 @@ const snap = (path) => ({
 });
 const set = (path, value) => docs.set(path, structuredClone(value));
 export async function connect() {
+  globalThis.__familyConnectionCalls = (globalThis.__familyConnectionCalls || 0) + 1;
   return {
-    auth: { currentUser: { getIdTokenResult: async () => ({ claims: { admin: true } }) } },
-    U: { signOut: async () => {}, GoogleAuthProvider: class {} },
+    auth: { currentUser: { isAnonymous: true } },
+    U: new Proxy(
+      {},
+      {
+        get() {
+          throw Error('Family management must not prompt for login or sign out');
+        },
+      },
+    ),
     db: {},
     F: {
       doc: (_, ...parts) => parts.join('/'),

@@ -61,9 +61,14 @@ await page.setViewportSize({ width: 1024, height: 1366 });
 await page.getByRole('button', { name: '🗓️ 首頁日曆', exact: true }).click();
 if (await page.evaluate(() => document.documentElement.scrollWidth > innerWidth))
   throw Error('Tablet overflow');
+await page.route('**/js/firebase.js', (route) =>
+  route.fulfill({ contentType: 'text/javascript', path: 'tests/fixtures/mock-firebase.js' }),
+);
 await page.goto('http://127.0.0.1:4173/english-vocabulary/migration_tool.html');
-await page.getByRole('button', { name: '使用 Google 登入' }).waitFor();
-await page.screenshot({ path: 'work/admin-login.png', fullPage: true });
+await page.getByRole('heading', { name: '⚙️ 英文單字管理系統' }).waitFor();
+if (await page.getByRole('button', { name: /Google|登入|登出/ }).count())
+  throw Error('Unexpected login control');
+await page.screenshot({ path: 'work/admin-entry.png', fullPage: true });
 await fs.writeFile(
   'work/browser-results.json',
   JSON.stringify(
@@ -79,7 +84,7 @@ await fs.writeFile(
         'tablet 1024px no overflow',
         'word browsing and detail modal',
         'project subpath',
-        'admin login gate',
+        'password-free admin entry',
       ],
     },
     null,
