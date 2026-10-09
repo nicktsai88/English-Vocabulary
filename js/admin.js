@@ -21,12 +21,9 @@ const ref = (...p) => ctx.F.doc(ctx.db, 'apps', APP_NAMESPACE, ...p);
 const col = (...p) => ctx.F.collection(ctx.db, 'apps', APP_NAMESPACE, ...p);
 async function refresh() {
   status('正在讀取雲端題庫…');
-  const q = ctx.F.query(
-    col('words'),
-    ctx.F.orderBy('level'),
-    ctx.F.orderBy('sequence'),
-    ctx.F.limit(250),
-  );
+  // Page by Firestore's default document-ID order; sort only after all pages arrive.
+  // Combining level and sequence on the server requires a manually deployed index.
+  const q = ctx.F.query(col('words'), ctx.F.limit(250));
   words = [];
   let cursor = null;
   do {
@@ -34,6 +31,7 @@ async function refresh() {
     words.push(...s.docs.map((d) => d.data()));
     cursor = s.size === 250 ? s.docs.at(-1) : null;
   } while (cursor);
+  words.sort((a, b) => a.level - b.level || a.sequence - b.sequence);
   status(`已連線 · 題庫 ${words.length} 筆`);
   updateDanger();
 }
@@ -50,7 +48,13 @@ async function startManagement() {
         'section',
         { class: 'panel' },
         el('h2', {}, '暫時無法連接題庫'),
-        el('p', {}, '請確認網路、Firebase 匿名登入及家庭版規則已啟用。'),
+        el(
+          'p',
+          {},
+          error.code === 'permission-denied'
+            ? '目前的 Firebase 規則尚未允許家庭題庫存取，請套用新版英文專用規則。'
+            : '無法讀取題庫，詳細原因如下。管理頁不需要設定登入密碼。',
+        ),
         el('p', { class: 'mini-note' }, error.message),
         button('重新連線', startManagement, 'primary'),
         el('p', {}, el('a', { href: './index.html' }, '← 回到學習樂園')),

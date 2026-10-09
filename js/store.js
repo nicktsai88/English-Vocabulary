@@ -240,7 +240,6 @@ export class Store {
     const q = this.F.query(
       this.col('words'),
       this.F.where('level', '==', level),
-      this.F.orderBy('sequence'),
       this.F.limit(250),
     );
     let cursor = null,
@@ -250,7 +249,7 @@ export class Store {
       result.push(...page.docs.map((d) => d.data()));
       cursor = page.size === 250 ? page.docs.at(-1) : null;
     } while (cursor);
-    return result;
+    return result.sort((a, b) => a.sequence - b.sequence);
   }
   async queue(event) {
     const e = {
