@@ -3,8 +3,22 @@ let generation = 0,
   last = [],
   onState = () => {};
 const synth = globalThis.speechSynthesis;
+const us = v => /^en[-_]us$/i.test(v.lang);
+const femaleName = /Samantha|Zira|Jenny|Aria|Joanna|Salli|Michelle|Ana|Emma|Ava|Allison|Susan|Victoria|Female/i;
+const maleName = /Guy|David|Mark|Christopher|Eric|Andrew|Brian|Ryan|Alex\b|Male\b/i;
+export function voiceRank(v) {
+  if (!us(v)) return 100;
+  if (/Google US English/i.test(v.name)) return 0;
+  if (/Microsoft/i.test(v.name) && /Natural/i.test(v.name))
+    return femaleName.test(v.name) ? 10 : maleName.test(v.name) ? 60 : 12;
+  if (/Siri|Enhanced|Premium/i.test(v.name))
+    return femaleName.test(v.name) ? 20 : maleName.test(v.name) ? 60 : 22;
+  if (/Samantha/i.test(v.name)) return 30;
+  if (femaleName.test(v.name)) return 40;
+  return 60;
+}
 function refresh() {
-  voices = synth?.getVoices().filter((v) => /^en[-_]/i.test(v.lang)) || [];
+  voices = (synth?.getVoices().filter((v) => /^en[-_]/i.test(v.lang)) || []).sort((a,b)=>voiceRank(a)-voiceRank(b));
   globalThis.dispatchEvent?.(new Event('englishvoices'));
 }
 if (synth) {
@@ -13,21 +27,21 @@ if (synth) {
 }
 export const speech = {
   profile: 'guest',
-  rate: 0.9,
+  rate: 1,
   voices: () => voices,
-  recommended: () =>
-    voices.find(
-      (v) => /Samantha|Zira|Jenny|Aria|Joanna|Salli/i.test(v.name) && v.lang === 'en-US',
-    ) ||
-    voices.find((v) => /Sonia|Susan|Serena|Libby/i.test(v.name)) ||
-    null,
+  recommended: () => voices.find(v => voiceRank(v) < 60) || null,
   selected() {
     return (
       voices.find((v) => v.voiceURI === localStorage.getItem('voice:' + this.profile)) ||
       this.recommended() ||
+      voices.find(us) ||
       voices.find((v) => v.default) ||
       voices[0]
     );
+  },
+  automatic() {
+    localStorage.removeItem('voice:' + this.profile);
+    this.stop();
   },
   select(id) {
     localStorage.setItem('voice:' + this.profile, id);
@@ -66,7 +80,7 @@ export const speech = {
       u.pitch = 1;
       callback('🔊 ' + text);
       u.onend = () => {
-        if (token === generation) setTimeout(next, 180);
+        if (token === generation) setTimeout(next, 100);
       };
       u.onerror = () => {
         if (token === generation) {

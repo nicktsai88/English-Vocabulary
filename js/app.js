@@ -923,7 +923,7 @@ function renderSettings() {
     if (speech.selected()) voiceSelect.value = speech.selected().voiceURI;
     info.textContent = speech.recommended()
       ? `目前：${speech.selected()?.name || '無'}（推薦名稱僅供參考，請試聽確認）`
-      : '此裝置尚未找到推薦女聲，請試聽並選擇英文聲音。目前英文預設聲音：' +
+      : '此瀏覽器尚未提供優先語音，已選用可用的英文聲音，請試聽確認：' +
         (speech.selected()?.name || '尚未可用');
   }
   voices();
@@ -951,9 +951,17 @@ function renderSettings() {
         'section',
         { class: 'panel' },
         el('h2', {}, '🗣️ 英文女聲'),
-        el('p', { class: 'muted' }, '使用裝置合成語音，實際聲音依瀏覽器與裝置而異。'),
+        el(
+          'p',
+          { class: 'muted' },
+          '優先 Google US English、Microsoft Natural、Siri／Enhanced／Premium、Samantha，再選其他 en-US。聲音依裝置提供，請試聽確認。',
+        ),
         field('裝置提供的英文聲音', voiceSelect),
         info,
+        button('自動選擇推薦美式語音', () => {
+          speech.automatic();
+          voices();
+        }),
         button('試聽', () => speech.play(["Hello! Let's practice English together."], notice)),
         button('停止', () => speech.stop()),
         el(
