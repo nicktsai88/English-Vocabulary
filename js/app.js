@@ -237,6 +237,10 @@ async function render() {
 }
 function renderHome() {
   if (!content || view !== 'home') return;
+  if (store.profile.courseVersion === 'none') {
+    content.replaceChildren(courseActivation());
+    return;
+  }
   const key =
     store.profile.id +
     ':' +
@@ -1013,6 +1017,52 @@ async function renderHistory() {
       : empty('還沒有學習紀錄', '完成第一個單字後，就會出現在這裡。'),
   );
 }
+function courseActivation() {
+  const p = store.profile;
+  const requested = new URLSearchParams(location.search).get('start');
+  const date = el('input', {
+    type: 'date',
+    max: today(),
+    value: requested || p.startDate,
+    'aria-label': '第 1 天日期',
+  });
+  const result = el('p', { role: 'status' });
+  const activate = button(
+    '啟用第 1 天',
+    async () => {
+      activate.disabled = true;
+      result.textContent = '正在啟用課程…';
+      try {
+        await store.activateCourse(date.value);
+        await choose(p.id);
+        await openDate(date.value);
+        notice(`已設定 ${date.value} 為第 1 天，從 Level 2 開始`);
+      } catch (e) {
+        result.textContent =
+          e.code === 'permission-denied'
+            ? '請先更新英文學習系統的 Firestore 規則，再按一次啟用。資料尚未變更。'
+            : e.message;
+        activate.disabled = false;
+      }
+    },
+    'primary',
+  );
+  return el(
+    'section',
+    { class: 'panel settings' },
+    el('h1', {}, `${p.name}，準備開始第 1 天 🌱`),
+    el('p', {}, '目前尚未啟用課程。匯入單字後，請先發布固定題庫版本，再選擇起始日期。'),
+    el('p', {}, '每天最多 15 個新字，依 Level 2～6 順序學習；Level 1 可自由查閱。'),
+    el(
+      'a',
+      { href: './migration_tool.html', target: '_blank', rel: 'noopener' },
+      '開啟單字管理系統，發布固定題庫版本 ↗',
+    ),
+    field('第 1 天日期', date),
+    activate,
+    result,
+  );
+}
 function renderSettings() {
   const p = store.profile,
     voiceSelect = el('select', { 'aria-label': '英文聲音' }),
@@ -1047,6 +1097,7 @@ function renderSettings() {
       'div',
       { class: 'settings' },
       el('h1', {}, '你的學習設定 ⚙️'),
+      ...(p.courseVersion === 'none' ? [courseActivation()] : []),
       el(
         'section',
         { class: 'panel' },

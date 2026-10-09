@@ -181,11 +181,87 @@ export class Store {
     );
     return d.data()?.words || [];
   }
+  async activateCourse(startDate) {
+    const profile = { ...this.profile };
+    const today = dateKey(new Date(), profile.timeZone);
+    if (
+      !/^\d{4}-\d{2}-\d{2}$/.test(startDate) ||
+      !Number.isFinite(Date.parse(startDate)) ||
+      new Date(startDate).toISOString().slice(0, 10) !== startDate ||
+      startDate > today
+    )
+      throw Error('請選擇有效的起始日期，最晚為今天');
+    if (profile.courseVersion !== 'none') throw Error('這位學習者已啟用課程，不能重新設定');
+    if (
+      this.pending.some((e) => e.profileId === profile.id) ||
+      Object.values(this.state.progress).some((p) => p.firstCompletedAt || p.lastFormalDate)
+    )
+      throw Error('已有學習紀錄或待同步答案，請先備份並確認課程');
+    const F = this.F;
+    const activated = await F.runTransaction(this.db, async (tx) => {
+      const profileRef = this.ref(...this.profilePath(profile.id));
+      const fresh = await tx.get(profileRef);
+      if (fresh.data()?.courseVersion !== 'none') throw Error('課程已在其他分頁啟用，請重新整理');
+      const current = await tx.get(this.ref('meta', 'current'));
+      const version = current.data()?.version;
+      if (!version) throw Error('單字已匯入後，還需要先在單字管理系統點「發布固定題庫版本」');
+      const course = await tx.get(this.ref('curricula', version));
+      const first = await tx.get(this.ref('curricula', version, 'days', '0'));
+      if (!course.data()?.ready || !first.data()?.words?.length)
+        throw Error('課程尚未發布完成，請稍後再試');
+      const planRef = this.ref(...this.profilePath(profile.id), 'dailyPlans', startDate);
+      const old = await tx.get(planRef);
+      if (
+        old.exists() &&
+        (old.data().courseVersion !== 'none' ||
+          old.data().words.length ||
+          old.data().reviewIds.length ||
+          old.data().reviewDone.length ||
+          old.data().completedActual)
+      )
+        throw Error('起始日已有任務或紀錄，無法覆寫');
+      const next = {
+        ...fresh.data(),
+        startDate,
+        courseVersion: version,
+        courseDays: course.data().days,
+      };
+      tx.update(profileRef, {
+        startDate,
+        courseVersion: version,
+        courseDays: next.courseDays,
+        updatedAt: F.serverTimestamp(),
+      });
+      tx.set(planRef, {
+        date: startDate,
+        words: first.data().words,
+        reviewIds: [],
+        reviewDone: [],
+        courseVersion: version,
+        timeZone: next.timeZone,
+        completedActual: null,
+        updatedAt: F.serverTimestamp(),
+      });
+      return next;
+    });
+    if (this.profile?.id === profile.id) this.profile = activated;
+    return activated;
+  }
   async ensurePlan(date) {
     const profile = { ...this.profile };
     const today = dateKey(new Date(), profile.timeZone);
     if (date > today) throw Error('未來日期只能預覽');
     if (date < profile.startDate) throw Error('這天還沒有開始學習');
+    if (profile.courseVersion === 'none')
+      return {
+        date,
+        words: [],
+        reviewIds: [],
+        reviewDone: [],
+        courseVersion: 'none',
+        timeZone: profile.timeZone,
+        completedActual: null,
+      };
     const words = await this.courseDay(date);
     const reviewIds =
       date === today
@@ -194,6 +270,15 @@ export class Store {
             .map((p) => p.wordId)
         : [];
     const make = (old) => {
+      // Empty placeholders made before a course was published are not learning history.
+      if (
+        old?.courseVersion === 'none' &&
+        !old.words.length &&
+        !old.reviewIds.length &&
+        !old.reviewDone.length &&
+        !old.completedActual
+      )
+        old = null;
       const plan = old
         ? { ...old, reviewIds: [...new Set([...old.reviewIds, ...reviewIds])] }
         : {
