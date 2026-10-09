@@ -42,7 +42,11 @@ export function quickQuiz({ container, words, pool, key, save, finish, exit }) {
         el(
           'p',
           { class: 'muted' },
-          q.fallback ? '此字尚無包含目標字的例句，本題暫用中文提示。' : `中文提示：${w.meaningZh}`,
+          q.fallback
+            ? q.reason === 'missing-example'
+              ? '這份課程內容的例句欄位是空白，本題暫用中文提示。'
+              : '已讀取例句，但尚未辨識出目標字形，本題暫用中文提示。'
+            : `中文提示：${w.meaningZh}`,
         ),
         answers,
         feedback,

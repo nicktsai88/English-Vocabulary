@@ -1,8 +1,106 @@
 // Shared by the reading sheet and the quiz; never insert vocabulary as HTML.
 const escape = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+// Regular inflections are constrained by the recorded part of speech.
+// Irregular forms must be explicitly listed rather than guessed by stem matching.
+const irregular = {
+  be: ['am', 'is', 'are', 'was', 'were', 'been', 'being'],
+  have: ['has', 'had'],
+  do: ['does', 'did', 'done'],
+  go: ['goes', 'went', 'gone'],
+  get: ['gets', 'got', 'gotten'],
+  make: ['makes', 'made'],
+  take: ['takes', 'took', 'taken'],
+  give: ['gives', 'gave', 'given'],
+  see: ['sees', 'saw', 'seen'],
+  write: ['writes', 'wrote', 'written'],
+  speak: ['speaks', 'spoke', 'spoken'],
+  buy: ['buys', 'bought'],
+  bring: ['brings', 'brought'],
+  think: ['thinks', 'thought'],
+  teach: ['teaches', 'taught'],
+  catch: ['catches', 'caught'],
+  run: ['runs', 'ran', 'running'],
+  eat: ['eats', 'ate', 'eaten'],
+  drink: ['drinks', 'drank', 'drunk'],
+  child: ['children'],
+  person: ['people'],
+  man: ['men'],
+  woman: ['women'],
+  foot: ['feet'],
+  tooth: ['teeth'],
+  mouse: ['mice'],
+  goose: ['geese'],
+};
+function inflections(base, pos) {
+  if (!/^[a-z]+$/i.test(base)) return [];
+  const b = base.toLowerCase(),
+    result = [];
+  const noun = /(^|[\s/;,])n\.?($|[\s/;,])/.test(pos);
+  const verb = /(^|[\s/;,])v(?:t|i)?\.?($|[\s/;,])/.test(pos);
+  if (!noun && !verb) return result;
+  result.push(...(irregular[b] || []));
+  const plural = /[^aeiou]y$/.test(b)
+    ? b.slice(0, -1) + 'ies'
+    : /(s|x|z|ch|sh)$/.test(b)
+      ? b + 'es'
+      : b + 's';
+  result.push(plural);
+  if (verb) {
+    result.push(
+      /[^aeiou]y$/.test(b) ? b.slice(0, -1) + 'ied' : b.endsWith('e') ? b + 'd' : b + 'ed',
+    );
+    result.push(
+      b.endsWith('ie')
+        ? b.slice(0, -2) + 'ying'
+        : b.endsWith('e') && !/(ee|ye|oe)$/.test(b)
+          ? b.slice(0, -1) + 'ing'
+          : b + 'ing',
+    );
+    // Doubling is stress-sensitive; explicitly cover common verbs including admit.
+    if (
+      [
+        'admit',
+        'commit',
+        'permit',
+        'refer',
+        'prefer',
+        'occur',
+        'begin',
+        'stop',
+        'plan',
+        'drop',
+        'shop',
+        'rub',
+        'rob',
+        'nod',
+        'fit',
+        'sit',
+        'run',
+        'swim',
+        'win',
+        'cut',
+        'put',
+        'set',
+        'get',
+        'forget',
+        'regret',
+        'submit',
+      ].includes(b)
+    ) {
+      result.push(b + b.at(-1) + 'ed', b + b.at(-1) + 'ing');
+    }
+  }
+  return result;
+}
 export function forms(word) {
   const base = String(word.word || '').trim();
-  return [...new Set([base, ...(word.acceptedAnswers || []), ...base.split(/\s*\/\s*/)])]
+  const originals = [base, ...(word.acceptedAnswers || []), ...base.split(/\s*\/\s*/)];
+  return [
+    ...new Set([
+      ...originals,
+      ...originals.flatMap((s) => inflections(s, String(word.partOfSpeech || '').toLowerCase())),
+    ]),
+  ]
     .filter(Boolean)
     .sort((a, b) => b.length - a.length);
 }
@@ -26,7 +124,13 @@ export function cloze(word) {
   const sentence = word.exampleEn || '';
   const parts = sentenceParts(sentence, word);
   const answer = parts.find((p) => p.target)?.text;
-  if (!answer) return { sentence: '', answer: word.word, fallback: true };
+  if (!answer)
+    return {
+      sentence,
+      answer: word.word,
+      fallback: true,
+      reason: sentence.trim() ? 'target-not-found' : 'missing-example',
+    };
   return {
     sentence: parts
       .map((p) => (p.target && p.text.toLowerCase() === answer.toLowerCase() ? '______' : p.text))
