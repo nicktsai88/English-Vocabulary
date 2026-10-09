@@ -1,0 +1,19 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "words",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "level", "order": "ASCENDING" },
+        { "fieldPath": "sequence", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": [
+    { "collectionGroup": "dailyPlans", "fieldPath": "words", "indexes": [] },
+    { "collectionGroup": "progress", "fieldPath": "snapshot", "indexes": [] },
+    { "collectionGroup": "reviewEvents", "fieldPath": "snapshot", "indexes": [] },
+    { "collectionGroup": "words", "fieldPath": "originalSource", "indexes": [] },
+    { "collectionGroup": "days", "fieldPath": "words", "indexes": [] }
+  ]
+}

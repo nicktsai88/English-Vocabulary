@@ -1,0 +1,153 @@
+[
+  {
+    "id": "level2-0001",
+    "level": 2,
+    "sequence": 1,
+    "word": "a/an",
+    "partOfSpeech": "art.",
+    "meaningZh": "一個",
+    "exampleEn": "I have a book and an apple.",
+    "exampleZh": "我有一本書和一顆蘋果。",
+    "phrases": [
+      {
+        "type": "pattern",
+        "text": "a book / an apple",
+        "meaningZh": "一本書／一顆蘋果",
+        "exampleEn": "There is an apple next to a book.",
+        "exampleZh": "一本書旁邊有一顆蘋果。",
+        "source": "ai-assisted",
+        "reviewStatus": "pending"
+      }
+    ],
+    "acceptedAnswers": ["a/an", "a / an"],
+    "source": "provided-six-word-demo",
+    "reviewStatus": "pending",
+    "active": true,
+    "contentVersion": 1
+  },
+  {
+    "id": "level2-0002",
+    "level": 2,
+    "sequence": 2,
+    "word": "ability",
+    "partOfSpeech": "n.",
+    "meaningZh": "能力",
+    "exampleEn": "She has the ability to speak three languages.",
+    "exampleZh": "她有說三種語言的能力。",
+    "phrases": [
+      {
+        "type": "collocation",
+        "text": "the ability to do something",
+        "meaningZh": "做某事的能力",
+        "exampleEn": "He has the ability to solve difficult problems.",
+        "exampleZh": "他有解決困難問題的能力。",
+        "source": "ai-assisted",
+        "reviewStatus": "pending"
+      }
+    ],
+    "source": "provided-six-word-demo",
+    "reviewStatus": "pending",
+    "active": true,
+    "contentVersion": 1
+  },
+  {
+    "id": "level2-0003",
+    "level": 2,
+    "sequence": 3,
+    "word": "able",
+    "partOfSpeech": "adj.",
+    "meaningZh": "有能力的／能夠的",
+    "exampleEn": "Are you able to swim across the river?",
+    "exampleZh": "你能游過這條河嗎？",
+    "phrases": [
+      {
+        "type": "pattern",
+        "text": "be able to do something",
+        "meaningZh": "能夠做某事",
+        "exampleEn": "I am able to ride a bike now.",
+        "exampleZh": "我現在會騎腳踏車了。",
+        "source": "ai-assisted",
+        "reviewStatus": "pending"
+      }
+    ],
+    "source": "provided-six-word-demo",
+    "reviewStatus": "pending",
+    "active": true,
+    "contentVersion": 1
+  },
+  {
+    "id": "level2-0004",
+    "level": 2,
+    "sequence": 4,
+    "word": "about",
+    "partOfSpeech": "prep./adv.",
+    "meaningZh": "關於／大約",
+    "exampleEn": "The book is about a brave dog.",
+    "exampleZh": "這本書是關於一隻勇敢的狗。",
+    "phrases": [
+      {
+        "type": "collocation",
+        "text": "talk about something",
+        "meaningZh": "談論某事",
+        "exampleEn": "Let's talk about your favorite book.",
+        "exampleZh": "我們來談談你最喜歡的書吧。",
+        "source": "ai-assisted",
+        "reviewStatus": "pending"
+      }
+    ],
+    "source": "provided-six-word-demo",
+    "reviewStatus": "pending",
+    "active": true,
+    "contentVersion": 1
+  },
+  {
+    "id": "level2-0005",
+    "level": 2,
+    "sequence": 5,
+    "word": "above",
+    "partOfSpeech": "prep./adv./adj.",
+    "meaningZh": "在……上方／多於",
+    "exampleEn": "The bird is flying above the tree.",
+    "exampleZh": "那隻鳥在樹的上方飛翔。",
+    "phrases": [
+      {
+        "type": "collocation",
+        "text": "above average",
+        "meaningZh": "高於平均",
+        "exampleEn": "Her score is above average.",
+        "exampleZh": "她的分數高於平均。",
+        "source": "ai-assisted",
+        "reviewStatus": "pending"
+      }
+    ],
+    "source": "provided-six-word-demo",
+    "reviewStatus": "pending",
+    "active": true,
+    "contentVersion": 1
+  },
+  {
+    "id": "level2-0006",
+    "level": 2,
+    "sequence": 6,
+    "word": "abroad",
+    "partOfSpeech": "adv.",
+    "meaningZh": "在國外／到國外",
+    "exampleEn": "My brother plans to study abroad next year.",
+    "exampleZh": "我哥哥計畫明年出國留學。",
+    "phrases": [
+      {
+        "type": "collocation",
+        "text": "study abroad",
+        "meaningZh": "出國留學",
+        "exampleEn": "She wants to study abroad after high school.",
+        "exampleZh": "她想在高中畢業後出國留學。",
+        "source": "ai-assisted",
+        "reviewStatus": "pending"
+      }
+    ],
+    "source": "provided-six-word-demo",
+    "reviewStatus": "pending",
+    "active": true,
+    "contentVersion": 1
+  }
+]
