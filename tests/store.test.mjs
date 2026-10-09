@@ -3,6 +3,48 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { Store } from '../js/store.js';
 const sample = JSON.parse(fs.readFileSync(new URL('../examples/demo.json', import.meta.url)))[0];
+test('level catalogue pages without a composite index and sorts all 503 results numerically', async () => {
+  const store = new Store(false);
+  const rows = Array.from({ length: 503 }, (_, i) => ({
+    ...sample,
+    id: `fixture-${i}`,
+    level: 2,
+    sequence: 503 - i,
+  }));
+  rows.push({ ...sample, id: 'other-level', level: 1, sequence: 1 });
+  let requests = 0;
+  store.col = () => 'words';
+  store.F = {
+    query: (base, ...clauses) => ({ clauses: [...(base.clauses || []), ...clauses] }),
+    where: (field, operator, value) => ({ field, operator, value }),
+    orderBy: () => {
+      throw Error('This equality + ordering query requires an index');
+    },
+    limit: (count) => ({ count }),
+    startAfter: (snapshot) => ({ after: snapshot.id }),
+    getDocs: async (query) => {
+      requests++;
+      const filter = query.clauses.find((c) => c.field);
+      assert.equal(filter.field, 'level');
+      assert.equal(filter.operator, '==');
+      const all = rows
+        .filter((w) => w.level === filter.value)
+        .sort((a, b) => a.id.localeCompare(b.id));
+      const after = query.clauses.find((c) => c.after)?.after;
+      const start = after ? all.findIndex((w) => w.id === after) + 1 : 0;
+      const page = all.slice(start, start + query.clauses.find((c) => c.count).count);
+      return { size: page.length, docs: page.map((w) => ({ id: w.id, data: () => w })) };
+    },
+  };
+  const result = await store.words(2);
+  assert.equal(requests, 3);
+  assert.equal(result.length, 503);
+  assert.equal(new Set(result.map((w) => w.id)).size, 503);
+  assert.deepEqual(
+    result.map((w) => w.sequence),
+    Array.from({ length: 503 }, (_, i) => i + 1),
+  );
+});
 const memory = new Map();
 globalThis.localStorage = {
   getItem: (k) => memory.get(k) || null,
@@ -65,4 +107,23 @@ test('future and unassigned event rejected before progress writes', () => {
     () => store.reduce({ ...first, wordId: 'level2-0009' }, {}, structuredClone(plan)),
     /不在/,
   );
+});
+
+test('background answers return after local persistence and drain arrivals during an active upload', async () => {
+ const {outbox}=await import('../js/outbox.js');
+ const original={...outbox};const queue=new Map();let release,entered;
+ const started=new Promise(r=>entered=r),blocked=new Promise(r=>release=r);
+ Object.assign(outbox,{list:async()=>[...queue.values()],put:async(_,e)=>queue.set(e.id,e),remove:async(_,id)=>queue.delete(id)});
+ try {
+  const store=new Store(true);store.uid='fast';store.profile={id:'fast',timeZone:'Asia/Taipei'};
+  const committed=[];let finished;
+  const drained=new Promise(r=>finished=r);
+  store.change=()=>finished();
+  store.commit=async(e)=>{committed.push(e.id);if(e.id==='one'){entered();await blocked;}};
+  await store.queue({id:'one'},{background:true});await started;
+  await store.queue({id:'two'},{background:true});
+  assert.equal(queue.size,2);assert.deepEqual(committed,['one']);
+  release();await drained;
+  assert.deepEqual(committed,['one','two']);assert.equal(queue.size,0);
+ } finally {Object.assign(outbox,original);}
 });

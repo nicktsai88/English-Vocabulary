@@ -17,21 +17,18 @@ await page.getByRole('heading', { name: '小晴，今天也一起進步吧！' }
 await page.screenshot({ path: 'work/home-desktop.png', fullPage: true });
 await page.getByRole('button', { name: '開始／繼續今日學習' }).click();
 await page.getByRole('heading', { name: 'a/an', exact: true }).waitFor();
-await page.getByRole('button', { name: '試著回想，再顯示中文與用法' }).click();
-await page.getByRole('button', { name: '開始回想／測驗' }).click();
-await page.getByRole('button', { name: '我已回想，顯示答案' }).click();
-await page.getByRole('button', { name: '😊 記得', exact: true }).click();
-await page.getByRole('heading', { name: 'ability', exact: true }).waitFor();
-await page.getByRole('button', { name: '試著回想，再顯示中文與用法' }).click();
-await page.getByRole('button', { name: '開始回想／測驗' }).click();
-await page.getByLabel('練習題型').selectOption('spell');
-await page.getByRole('textbox', { name: '英文答案' }).fill('wrong');
-await page.getByRole('button', { name: '核對答案' }).click();
-if (await page.getByRole('button', { name: '😊 記得', exact: true }).isEnabled())
-  throw Error('Wrong spelling still permits remember');
-await page.getByRole('button', { name: '🤔 不熟', exact: true }).click();
-await page.getByRole('heading', { name: 'able', exact: true }).waitFor();
-await page.getByRole('button', { name: '先休息，稍後再來' }).click();
+await page.getByRole('button', { name: '閱讀完成，開始四選一' }).click();
+await page.getByRole('button', { name: 'a', exact: true }).click();
+await page.getByText('已完成 1 / 6', { exact: false }).waitFor();
+await page
+  .locator('.quick-options button')
+  .filter({ hasNotText: /^ability$/ })
+  .first()
+  .click();
+await page.getByRole('button', { name: '立即重練這個字' }).click();
+await page.getByRole('button', { name: 'ability', exact: true }).click();
+await page.getByText('已完成 2 / 6', { exact: false }).waitFor();
+await page.getByRole('button', { name: '暫停，稍後繼續' }).click();
 await page.reload();
 await page.getByRole('heading', { name: '小晴，今天也一起進步吧！' }).waitFor();
 await page.getByRole('button', { name: '＋', exact: true }).click();
@@ -76,8 +73,8 @@ await fs.writeFile(
       errors,
       checks: [
         'profile creation',
-        'first recall',
-        'wrong spelling cannot mark remember',
+        'four-choice cloze',
+        'wrong answer immediately retried',
         'reload persistence',
         'two-profile isolation',
         'mobile 390px no overflow',

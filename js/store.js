@@ -336,7 +336,7 @@ export class Store {
     } while (cursor);
     return result.sort((a, b) => a.sequence - b.sequence);
   }
-  async queue(event) {
+  async queue(event, { background = false } = {}) {
     const e = {
       ...event,
       id: event.id || crypto.randomUUID(),
@@ -347,20 +347,24 @@ export class Store {
     await outbox.put(this.uid, e);
     localStorage.setItem('english-sync-signal', crypto.randomUUID());
     this.status('等待同步 · 答案已保存在裝置');
-    await this.flush();
+    if (background) void this.flush();
+    else await this.flush();
   }
   async flush() {
     if (this.busy) return;
     this.busy = true;
     try {
-      const pending = await outbox.list(this.uid);
+      let pending = await outbox.list(this.uid);
       if (!pending.length) return;
-      for (const event of pending) {
-        if (!this.demo && !navigator.onLine) break;
-        await this.commit(event);
-        await outbox.remove(this.uid, event.id);
+      while (pending.length && (this.demo || navigator.onLine)) {
+        for (const event of pending) {
+          if (!this.demo && !navigator.onLine) break;
+          await this.commit(event);
+          await outbox.remove(this.uid, event.id);
+        }
+        pending = await outbox.list(this.uid);
       }
-      this.pending = await outbox.list(this.uid);
+      this.pending = pending;
       this.status(
         this.pending.length
           ? `等待同步 · ${this.pending.length} 筆答案`

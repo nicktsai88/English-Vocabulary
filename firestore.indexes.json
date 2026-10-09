@@ -1,14 +1,5 @@
 {
-  "indexes": [
-    {
-      "collectionGroup": "words",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "level", "order": "ASCENDING" },
-        { "fieldPath": "sequence", "order": "ASCENDING" }
-      ]
-    }
-  ],
+  "indexes": [],
   "fieldOverrides": [
     { "collectionGroup": "dailyPlans", "fieldPath": "words", "indexes": [] },
     { "collectionGroup": "progress", "fieldPath": "snapshot", "indexes": [] },

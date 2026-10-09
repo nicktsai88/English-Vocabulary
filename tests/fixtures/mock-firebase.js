@@ -31,17 +31,19 @@ export async function connect() {
       limit: (n) => ({ limit: n }),
       startAfter: (cursor) => ({ cursor: cursor.id }),
       getDocsFromServer: async (q) => {
+        globalThis.__wordPageRequests = (globalThis.__wordPageRequests || 0) + 1;
+        if (q.clauses.filter((c) => c.order).length > 1) {
+          throw Object.assign(Error('The query requires an index.'), {
+            code: 'failed-precondition',
+          });
+        }
         const rows = [...docs]
           .filter(
             ([k]) =>
               k.startsWith(q.base + '/') && k.split('/').length === q.base.split('/').length + 1,
           )
           .map(([k]) => snap(k))
-          .sort(
-            (a, b) =>
-              (a.data().level || 0) - (b.data().level || 0) ||
-              (a.data().sequence || 0) - (b.data().sequence || 0),
-          );
+          .sort((a, b) => a.id.localeCompare(b.id));
         const c = q.clauses.find((c) => c.cursor),
           n = q.clauses.find((c) => c.limit)?.limit || 250;
         const result = rows.slice(

@@ -1,13 +1,7 @@
 import { Store } from './store.js';
-import {
-  dateKey,
-  addDays,
-  dayDiff,
-  planStatus,
-  streak,
-  timelineStreak,
-  correctAnswer,
-} from './core.js';
+import { sentenceParts } from './quick-core.js';
+import { quickQuiz } from './quick-quiz.js';
+import { dateKey, addDays, dayDiff, planStatus, streak, timelineStreak } from './core.js';
 import { $, el, button, notice, attempt, download, field } from './ui.js';
 import { speech } from './speech.js';
 import { outbox } from './outbox.js';
@@ -485,112 +479,132 @@ async function openDate(date) {
 }
 async function startSession(date, kind) {
   const token = ++generation;
-  content.replaceChildren(empty('準備你的任務', '正在取得已鎖定的題目…'));
+  if (store.profile.courseVersion === 'none') {
+    await go('home');
+    return;
+  }
+  view = 'session';
+  speech.stop();
+  content.replaceChildren(empty('準備今日學習', '正在讀取單字與例句…'));
   const plan = await store.ensurePlan(date);
-  if (token !== generation) return;
   const pending = (await outbox.list(store.uid))
     .filter((e) => e.profileId === store.profile.id)
     .map((e) => e.wordId);
   if (token !== generation) return;
-  let words =
-    kind === 'new'
-      ? plan.words.filter(
-          (w) => !store.state.progress[w.id]?.firstCompletedAt && !pending.includes(w.id),
-        )
-      : plan.reviewIds
-          .filter(
-            (id) =>
-              !plan.reviewDone.includes(id) &&
-              !pending.includes(id) &&
-              store.state.progress[id]?.lastFormalDate !== today(),
-          )
-          .map((id) => store.state.progress[id]?.snapshot)
-          .filter(Boolean);
-  session = { date, kind, words, index: 0, retry: [], token, processed: 0 };
-  view = 'session';
-  await showSession();
-}
-async function showSession() {
-  speech.stop();
-  const s = session;
-  if (!s) return;
-  if (s.index >= s.words.length) {
-    if (s.retry.length) {
-      s.words = s.retry.splice(0);
-      s.index = 0;
-      s.relearning = true;
-    } else {
-      content.replaceChildren(
-        el(
-          'div',
-          { class: 'panel empty celebrate' },
-          el('div', { class: 'icon' }, '🌟'),
-          el('h1', {}, s.processed ? '這一組練習完成了！' : '目前沒有需要練習的單字'),
-          el(
-            'p',
-            {},
-            s.processed
-              ? '每一次回想，都讓記憶更清楚。待同步狀態請看右上方。'
-              : '尚未發布題庫、今天沒有新字，或任務已經完成。',
-          ),
-          button('回到日曆', () => go('home'), 'primary'),
-          button(
-            '重試同步',
-            attempt(() => store.flush()),
-          ),
-        ),
-      );
-      return;
-    }
+  const isPending = (w) => !store.state.progress[w.id]?.firstCompletedAt && !pending.includes(w.id);
+  const reviews = plan.reviewIds
+    .filter(
+      (id) =>
+        !plan.reviewDone.includes(id) &&
+        !pending.includes(id) &&
+        store.state.progress[id]?.lastFormalDate !== today(),
+    )
+    .map((id) => store.state.progress[id]?.snapshot)
+    .filter(Boolean);
+  const fresh = kind === 'new' ? plan.words.filter(isPending) : [];
+  const words = [...fresh, ...reviews.filter((w) => !fresh.some((n) => n.id === w.id))];
+  const reading = kind === 'new' ? plan.words : reviews;
+  session = { date, kind, words, token };
+  // Pool loads while the learner reads. Cached day words remain usable offline.
+  const poolPromise = Promise.all(
+    [...new Set(words.map((w) => w.level))].map((level) => store.words(level).catch(() => [])),
+  ).then((rows) => [...reading, ...reviews, ...rows.flat().filter((w) => w.active !== false)]);
+  const begin = button(
+    '閱讀完成，開始四選一 →',
+    attempt(async () => {
+      begin.disabled = true;
+      begin.textContent = '準備測驗…';
+      const pool = await poolPromise;
+      if (token !== generation) return;
+      speech.stop();
+      quickQuiz({
+        container: content,
+        words,
+        pool,
+        key: 'english-quick-v1:' + store.uid + ':' + store.profile.id + ':' + date + ':' + kind,
+        exit: () => go('home'),
+        save: async (w, r) => {
+          if (token !== generation) throw Error('已離開測驗');
+          await store.queue(
+            {
+              id: r.eventId,
+              wordId: w.id,
+              level: w.level,
+              snapshot: w,
+              kind: fresh.some((n) => n.id === w.id) ? 'new' : 'review',
+              planDate: date,
+              actualDate: today(),
+              rating: r.wrong ? 'forget' : 'remember',
+              correct: !r.wrong,
+            },
+            { background: true },
+          );
+        },
+        finish: () => {
+          if (token !== generation) return;
+          content.replaceChildren(
+            el(
+              'section',
+              { class: 'panel empty celebrate' },
+              el(
+                'h1',
+                {},
+                kind === 'review' && plan.words.some(isPending)
+                  ? '到期複習完成了！ 🎉'
+                  : date === today()
+                    ? '今天的任務完成了！ 🎉'
+                    : date + ' 的任務完成了！ 🎉',
+              ),
+              el('p', {}, '測驗與錯題練習已完成。答案已保存於此裝置，雲端同步狀態請看右上方。'),
+              button('回到日曆', () => go('home'), 'primary'),
+              button(
+                '重試同步',
+                attempt(() => store.flush()),
+              ),
+            ),
+          );
+        },
+      });
+      content.scrollIntoView({ block: 'start' });
+    }),
+    'primary',
+  );
+  if (!words.length) {
+    content.replaceChildren(
+      empty('這一天的作答已完成', '若仍有等待同步的答案，連線後會繼續儲存。'),
+      button('回到日曆', () => go('home')),
+    );
+    return;
   }
-  const w = s.words[s.index];
   content.replaceChildren(
     el(
       'div',
       { class: 'row between' },
-      el(
-        'p',
-        { class: 'eyebrow' },
-        `${s.relearning ? '稍後重練' : s.kind === 'new' ? 'DAILY WORDS' : 'REVIEW TIME'} · ${s.index + 1} / ${s.words.length} · ${s.date}`,
-      ),
-      button('先休息，稍後再來', () => go('home')),
+      el('h1', {}, date + ' · 快速學習'),
+      button('暫停，稍後繼續', () => go('home')),
     ),
-    wordCard(w, {
-      practice: true,
-      onGrade: attempt(async (rating, correct) => {
-        if (s.token !== generation) return;
-        if (!s.relearning) {
-          await store.queue({
-            id: crypto.randomUUID(),
-            wordId: w.id,
-            level: w.level,
-            snapshot: w,
-            kind: s.kind,
-            planDate: s.date,
-            actualDate: today(),
-            rating,
-            correct,
-          });
-          s.processed++;
-        }
-        if (s.token !== generation) return;
-        if (rating === 'forget') s.retry.push(w);
-        s.index++;
-        if (s.processed && s.processed % 10 === 0 && !s.relearning && s.index < s.words.length) {
-          content.replaceChildren(
-            empty('完成 10 題，伸個懶腰吧 ☁️', '剩下的題目都還在，準備好再繼續。'),
-            button('繼續下一組', showSession, 'primary'),
-          );
-        } else await showSession();
-      }),
-    }),
+    el('p', { class: 'muted' }, '約 20 分鐘：先同頁閱讀，再做例句四選一。紅字標出單字用法。'),
+    el('p', {}, '本次測驗：' + fresh.length + ' 個未完成新字、' + reviews.length + ' 個到期複習。'),
+    el(
+      'div',
+      { class: 'quick-sheet' },
+      reading.map((w) => wordCard(w)),
+    ),
+    ...(kind === 'new' && reviews.length
+      ? [
+          el('h2', {}, '到期複習'),
+          el(
+            'div',
+            { class: 'quick-sheet' },
+            reviews.map((w) => wordCard(w)),
+          ),
+        ]
+      : []),
+    el('div', { class: 'quick-start' }, begin),
   );
+  content.scrollIntoView({ block: 'start' });
 }
-function wordCard(w, { practice = false, onGrade } = {}) {
-  let revealed = !practice,
-    answered = false,
-    correct = null,
-    submitted = false;
+function wordCard(w) {
   const wrap = el('article', { class: 'word-card panel' }),
     speechState = el('p', { class: 'muted', 'aria-live': 'polite' });
   const say = (text) => {
@@ -603,10 +617,21 @@ function wordCard(w, { practice = false, onGrade } = {}) {
     return b;
   };
   const speakLine = (text, cls = 'english') =>
-    el('div', { class: 'row' }, el('span', { class: cls }, text), say(text));
+    el(
+      'div',
+      { class: 'row' },
+      el(
+        'span',
+        { class: cls },
+        sentenceParts(text, w).map((p) =>
+          p.target ? el('strong', { class: 'target-word' }, p.text) : p.text,
+        ),
+      ),
+      say(text),
+    );
   const detail = el(
     'div',
-    { class: 'definition', hidden: !revealed },
+    { class: 'definition' },
     el('p', { class: 'meaning' }, w.meaningZh),
     el(
       'div',
@@ -660,187 +685,11 @@ function wordCard(w, { practice = false, onGrade } = {}) {
       'div',
       { class: 'row' },
       button('依序朗讀本卡', () => speech.play(all, (t) => (speechState.textContent = t))),
-      button('慢速 0.7', () => {
-        speech.rate = 0.7;
-        speech.play([w.word], (t) => (speechState.textContent = t));
-      }),
-      button('一般 0.9', () => {
-        speech.rate = 0.9;
-        speech.play([w.word], (t) => (speechState.textContent = t));
-      }),
-      button('重播', () => speech.replay()),
       button('停止', () => speech.stop()),
     ),
     speechState,
   );
-  if (practice)
-    wrap.append(
-      button(
-        '試著回想，再顯示中文與用法 👀',
-        (e) => {
-          revealed = true;
-          detail.hidden = false;
-          beginQuiz.hidden = false;
-          e.currentTarget.hidden = true;
-        },
-        'primary',
-      ),
-    );
-  const beginQuiz = button(
-    '開始回想／測驗 →',
-    (e) => {
-      setQuiz();
-      quiz.hidden = false;
-      e.currentTarget.hidden = true;
-    },
-    'primary',
-  );
-  beginQuiz.hidden = true;
   wrap.append(detail);
-  if (practice) wrap.append(beginQuiz);
-  const quiz = el('section', { class: 'quiz', hidden: !revealed }),
-    prompt = el('div'),
-    result = el('div'),
-    grades = el('div', { class: 'row' });
-  let mode = 'recall';
-  const select = el(
-    'select',
-    { 'aria-label': '練習題型' },
-    [
-      ['recall', '回想並核對'],
-      ['en-zh', '看英文選中文'],
-      ['zh-en', '看中文選英文'],
-      ['cloze', '例句填空'],
-      ['spell', '英文拼字'],
-    ].map(([v, t]) => el('option', { value: v }, t)),
-  );
-  function finish(ok) {
-    wrap.querySelector('.word-heading').hidden = false;
-    answered = true;
-    correct = ok;
-    result.className = 'feedback ' + (ok === false ? 'wrong' : '');
-    result.textContent =
-      ok === false
-        ? `再看一次：${w.word} — ${w.meaningZh}`
-        : ok === null
-          ? '請誠實評估回想結果。'
-          : '答對了！再選擇熟悉程度。';
-    gradeButtons.forEach((b, i) => (b.disabled = i === 0 && ok === false));
-  }
-  function setQuiz() {
-    answered = false;
-    correct = null;
-    gradeButtons.forEach((b) => (b.disabled = true));
-    result.textContent = '';
-    result.className = '';
-    prompt.replaceChildren();
-    mode = select.value;
-    speech.stop();
-    speechState.textContent = '';
-    wrap.querySelector('.word-heading').hidden = ['spell', 'cloze', 'zh-en'].includes(mode);
-    if (mode === 'recall') {
-      prompt.append(
-        el('p', {}, '遮住答案後，試著說出這個字的意思與一個用法。'),
-        button('我已回想，顯示答案', () => {
-          detail.hidden = false;
-          finish(null);
-        }),
-      );
-      detail.hidden = true;
-    } else if (mode === 'spell' || mode === 'cloze') {
-      detail.hidden = true;
-      const input = el('input', {
-        class: 'search',
-        placeholder: '輸入英文',
-        autocomplete: 'off',
-        autocapitalize: 'none',
-        spellcheck: 'false',
-        'aria-label': '英文答案',
-      });
-      const escaped = w.word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const sentence = w.exampleEn.replace(new RegExp('\\b' + escaped + '\\b', 'gi'), '______');
-      prompt.append(
-        el(
-          'p',
-          {},
-          mode === 'spell'
-            ? w.meaningZh
-            : sentence === w.exampleEn
-              ? '依中文提示填字：' + w.meaningZh
-              : sentence,
-        ),
-        input,
-        button('核對答案', () => {
-          finish(correctAnswer(input.value, w));
-          detail.hidden = false;
-        }),
-      );
-    } else {
-      detail.hidden = true;
-      const pool = [
-        ...(session?.words || []),
-        ...Object.values(store.state.progress)
-          .map((p) => p.snapshot)
-          .filter(Boolean),
-      ];
-      const seen = new Set([mode === 'en-zh' ? w.meaningZh : w.word]);
-      const alternatives = [];
-      for (const x of pool) {
-        const val = mode === 'en-zh' ? x.meaningZh : x.word;
-        if (x.id === w.id || x.meaningZh === w.meaningZh || x.word === w.word || seen.has(val))
-          continue;
-        seen.add(val);
-        alternatives.push(x);
-        if (alternatives.length === 3) break;
-      }
-      if (alternatives.length < 2) {
-        prompt.append(el('p', {}, '可用的不同答案不足，請改用拼字或自行回想。'));
-        return;
-      }
-      const list = [w, ...alternatives].sort(() => Math.random() - 0.5);
-      prompt.append(
-        el('p', {}, mode === 'en-zh' ? w.word : w.meaningZh),
-        el(
-          'div',
-          { class: 'answers' },
-          list.map((x) =>
-            button(mode === 'en-zh' ? x.meaningZh : x.word, () => {
-              if (answered) return;
-              finish(x.id === w.id);
-              detail.hidden = false;
-            }),
-          ),
-        ),
-      );
-    }
-  }
-  const gradeButtons = [
-    ['remember', '😊 記得'],
-    ['hard', '🤔 不熟'],
-    ['forget', '🌱 忘記'],
-  ].map(([rating, label]) => {
-    const b = button(label, async () => {
-      if (!answered || submitted || !revealed || (rating === 'remember' && correct === false))
-        return;
-      submitted = true;
-      gradeButtons.forEach((x) => (x.disabled = true));
-      await onGrade(rating, correct === null ? rating === 'remember' : correct);
-    });
-    b.disabled = true;
-    return b;
-  });
-  grades.append(...gradeButtons);
-  select.addEventListener('change', setQuiz);
-  quiz.append(
-    el('h3', {}, '小小回想，大大進步'),
-    field('選擇練習方式', select),
-    prompt,
-    result,
-    grades,
-  );
-  if (practice) {
-    wrap.append(quiz);
-  }
   return wrap;
 }
 async function renderWords() {

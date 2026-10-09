@@ -168,3 +168,73 @@ test('real Store plan and concurrent answer transactions obey rules and are idem
   await assertFails(getDoc(doc(other, path + '/progress/' + sample.id)));
   await assertFails(setDoc(doc(other, path + '/reviewEvents/attacker'), event));
 });
+
+test('unassigned learner enrolls on Oct 9 once, keeps identity and replaces only empty plans', async () => {
+  const assert = (await import('node:assert/strict')).default;
+  const db = env.authenticatedContext('enrollment').firestore();
+  const store = new Store(false);
+  Object.assign(store, { F, db, uid: 'enrollment' });
+  Object.defineProperty(navigator, 'onLine', { value: true, configurable: true });
+  const profile = await store.createProfile('尼克克', '🦊', 'Asia/Taipei', {
+    courseVersion: 'none',
+    courseDays: 0,
+    startDate: '2026-10-01',
+  });
+  store.profile = profile;
+  const path = ns + '/accounts/enrollment/profiles/' + profile.id;
+  const placeholder = (date) => ({
+    date,
+    words: [],
+    reviewIds: [],
+    reviewDone: [],
+    completedActual: null,
+    courseVersion: 'none',
+    timeZone: 'Asia/Taipei',
+    updatedAt: serverTimestamp(),
+  });
+  await setDoc(doc(db, path + '/dailyPlans/2026-10-09'), placeholder('2026-10-09'));
+  await setDoc(doc(db, ns + '/meta/current'), {});
+  await assert.rejects(store.activateCourse('2026-10-09'), /發布固定題庫版本/);
+  await assert.rejects(store.activateCourse('2026-02-30'), /有效/);
+  await assert.rejects(store.activateCourse('2999-01-01'), /有效/);
+  assert.equal((await getDoc(doc(db, path))).data().courseVersion, 'none');
+  const sample = JSON.parse(fs.readFileSync(new URL('../examples/demo.json', import.meta.url)))[0];
+  const words = Array.from({ length: 15 }, (_, i) => ({
+    ...sample,
+    id: 'level2-' + String(i + 1).padStart(4, '0'),
+    sequence: i + 1,
+  }));
+  await setDoc(doc(db, ns + '/curricula/enrollment'), { ready: false, days: 1 });
+  await setDoc(doc(db, ns + '/curricula/enrollment/days/0'), { words, index: 0 });
+  await updateDoc(doc(db, ns + '/curricula/enrollment'), { ready: true });
+  await setDoc(doc(db, ns + '/meta/current'), { version: 'enrollment', days: 1 });
+  const second = new Store(false);
+  Object.assign(second, { F, db, uid: 'enrollment', profile: { ...profile } });
+  const results = await Promise.allSettled([
+    store.activateCourse('2026-10-09'),
+    second.activateCourse('2026-10-09'),
+  ]);
+  assert.equal(results.filter((r) => r.status === 'fulfilled').length, 1);
+  store.profile = (await getDoc(doc(db, path))).data();
+  assert.equal(store.profile.name, '尼克克');
+  assert.equal(store.profile.startDate, '2026-10-09');
+  assert.equal(store.profile.id, profile.id);
+  const plan = await store.ensurePlan('2026-10-09');
+  assert.equal(plan.words.length, 15);
+  assert.equal(plan.words[0].id, 'level2-0001');
+  assert.equal(plan.completedActual, null);
+  await assert.rejects(store.activateCourse('2026-10-09'), /已啟用/);
+  await assertFails(
+    updateDoc(doc(db, path), { startDate: '2026-10-08', updatedAt: serverTimestamp() }),
+  );
+  await assertFails(
+    updateDoc(doc(db, path + '/dailyPlans/2026-10-09'), {
+      words: [],
+      updatedAt: serverTimestamp(),
+    }),
+  );
+  const stranger = env.authenticatedContext('enrollment-stranger').firestore();
+  await assertFails(
+    updateDoc(doc(stranger, path), { startDate: '2026-10-08', updatedAt: serverTimestamp() }),
+  );
+});

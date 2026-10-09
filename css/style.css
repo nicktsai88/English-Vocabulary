@@ -764,3 +764,22 @@ dialog::backdrop {
   height: 24px;
   accent-color: var(--purple);
 }
+
+/* All learning details remain visible; no flip cards or disclosure steps. */
+.quick-sheet { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; align-items:start; }
+.quick-sheet .word-card { min-width:0; padding:20px; }
+.quick-sheet .word-heading { font-size:1.8rem; margin:12px 0; }
+.quick-sheet .row { flex-wrap:wrap; }
+.quick-sheet .english { overflow-wrap:anywhere; }
+.target-word { color:#be123c; font-size:1.22em; font-weight:800; }
+.quick-start { position:sticky; bottom:0; background:#ffffffed; border-top:1px solid #e5e1f3; padding:16px; text-align:center; z-index:3; }
+.quick-start button { min-height:48px; }
+.quick-question { max-width:850px; margin:20px auto; }
+.quick-question h2 { line-height:1.7; }
+.quick-options { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.quick-option { min-height:58px; font-size:1.15rem; text-align:left; padding:16px; }
+.quick-errors { max-width:850px; margin:20px auto; }
+@media(max-width:1200px) { .quick-sheet { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media(max-width:700px) { .quick-sheet,.quick-options { grid-template-columns:1fr; } .quick-sheet .word-card { padding:16px; } }
+.quick-sheet .word-card.panel { margin:0; }
+@media(max-width:700px) { .quick-start { bottom:76px; } }

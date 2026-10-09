@@ -65,6 +65,32 @@ await page
 await page.setViewportSize({ width: 390, height: 844 });
 assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
 await page.screenshot({ path: 'work/admin-mobile.png', fullPage: true });
+const beforePages = await page.evaluate(() => {
+  const sample = [...__mockCloud.entries()].find(([path]) => path.includes('/words/'))[1];
+  for (let i = 0; i < 503; i++) {
+    const id = 'fixture-' + i;
+    __mockCloud.set('apps/english-vocabulary-v1/words/' + id, {
+      ...sample,
+      id,
+      level: 3,
+      sequence: 503 - i,
+    });
+  }
+  return globalThis.__wordPageRequests;
+});
+await page.getByRole('button', { name: '重新讀取', exact: true }).click();
+await page.getByText(/509 筆符合/).waitFor();
+assert.equal((await page.evaluate(() => globalThis.__wordPageRequests)) - beforePages, 3);
+const exportReady = page.waitForEvent('download');
+await page.getByRole('button', { name: '匯出目前篩選 JSON', exact: true }).click();
+await (await exportReady).saveAs('work/catalogue-regression.json');
+const exported = JSON.parse(await fs.readFile('work/catalogue-regression.json', 'utf8'));
+assert.equal(exported.length, 509);
+assert.equal(new Set(exported.map((w) => w.id)).size, 509);
+assert.deepEqual(
+  exported.filter((w) => w.level === 3).map((w) => w.sequence),
+  Array.from({ length: 503 }, (_, i) => i + 1),
+);
 await browser.close();
 assert.deepEqual(errors, []);
 console.log(

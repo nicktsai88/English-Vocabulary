@@ -60,11 +60,21 @@ service cloud.firestore {
         && request.resource.data.updatedAt == request.time;
       allow delete: if false;
       match /profiles/{pid} {
+        // One-time enrollment for profiles created before the first publication.
+        function enroll() {
+          let d = request.resource.data;
+          let current = get(/databases/$(database)/documents/apps/$(ns)/meta/current).data;
+          let course = get(/databases/$(database)/documents/apps/$(ns)/curricula/$(d.courseVersion)).data;
+          return resource.data.courseVersion == 'none' && resource.data.status == 'ready'
+            && d.courseVersion != 'none' && d.courseVersion == current.version
+            && course.ready == true && d.courseDays == course.days && d.courseDays > 0
+            && d.diff(resource.data).affectedKeys().hasOnly(['startDate','courseVersion','courseDays','updatedAt']);
+        }
         allow read: if owner(ns,uid);
         allow create: if owner(ns,uid) && profile(request.resource.data,pid)
           && request.resource.data.createdAt == request.time && request.resource.data.updatedAt == request.time;
         allow update: if owner(ns,uid) && profile(request.resource.data,pid)
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','updatedAt'])
+          && (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','updatedAt']) || enroll())
           && request.resource.data.updatedAt == request.time;
         allow delete: if false;
         match /progress/{wid} {
@@ -76,13 +86,21 @@ service cloud.firestore {
           allow delete: if false;
         }
         match /dailyPlans/{day} {
+          function fillPlaceholder() {
+            let p = getAfter(/databases/$(database)/documents/apps/$(ns)/accounts/$(uid)/profiles/$(pid)).data;
+            return resource.data.courseVersion == 'none' && resource.data.words.size() == 0
+              && resource.data.reviewIds.size() == 0 && resource.data.reviewDone.size() == 0
+              && resource.data.completedActual == null && day >= p.startDate
+              && p.courseVersion != 'none' && request.resource.data.courseVersion == p.courseVersion;
+          }
           allow read: if owner(ns,uid);
           allow create, update: if owner(ns,uid) && date(day) && request.resource.data.date == day
             && request.resource.data.words is list && request.resource.data.words.size() <= 15
             && request.resource.data.reviewIds is list && request.resource.data.reviewDone is list
             && request.resource.data.updatedAt == request.time
             && (!exists(/databases/$(database)/documents/apps/$(ns)/accounts/$(uid)/profiles/$(pid)/dailyPlans/$(day))
-              || (request.resource.data.words == resource.data.words && request.resource.data.courseVersion == resource.data.courseVersion));
+              || (request.resource.data.words == resource.data.words && request.resource.data.courseVersion == resource.data.courseVersion)
+              || fillPlaceholder());
           allow delete: if false;
         }
         match /reviewEvents/{eid} {
